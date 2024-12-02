@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Liquidity | SolMint</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.73.0/lib/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@solana/spl_token@0.3.8/lib/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@raydium-io/raydium-sdk@1.3.1/dist/index.iife.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-6">
+        <div class="flex justify-center items-center flex-col">
+            <h1 class="text-3xl font-bold">SolMint</h1>
+            <nav class="mt-4 flex justify-center space-x-8">
+                <a href="create-token.html" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
+                    Create Token
+                </a>
+                <a href="create-liquidity.html" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
+                    Create Liquidity Pool
+                </a>
+                <button id="connectWalletButton" onclick="showWalletModal()" class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    Connect Wallet
+                </button>
+                <select id="networkSelect" onchange="updateNetwork()" class="bg-white text-blue-600 border rounded-md py-2 px-4 hover:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition duration-300">
+                    <option value="devnet">Devnet</option>
+                    <option value="testnet">Testnet</option>
+                    <option value="mainnet">Mainnet</option>
+                </select>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Wallet Selector Modal -->
+    <div id="walletModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <h3 class="text-xl font-bold mb-4">Select Wallet</h3>
+            <div class="space-y-4">
+                <button onclick="connectSpecificWallet('phantom')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center justify-center">
+                    <img src="https://phantom.app/img/phantom-logo.svg" class="w-6 h-6 mr-2" alt="Phantom">
+                    Phantom
+                </button>
+                <button onclick="connectSpecificWallet('solflare')" class="w-full bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 flex items-center justify-center">
+                    <img src="https://solflare.com/favicon.ico" class="w-6 h-6 mr-2" alt="Solflare">
+                    Solflare
+                </button>
+            </div>
+            <button onclick="closeWalletModal()" class="mt-4 w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-100">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    <main class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Liquidity Creation Section -->
+        <section class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-6">Create Liquidity</h2>
+            <form>
+                <label for="baseToken" class="block text-sm font-medium">Base Token</label>
+                <select id="baseToken" class="w-full p-3 border rounded-md mb-4">
+                </select>
+                <label for="quoteToken" class="block text-sm font-medium">Quote Token</label>
+                <select id="quoteToken" class="w-full p-3 border rounded-md mb-4">
+                </select>
+                <label for="liquidityAmount" class="block text-sm font-medium">Liquidity Amount</label>
+                <input type="number" id="liquidityAmount" class="w-full p-3 border rounded-md mb-4" placeholder="Enter amount">
+                <label for="feeTier" class="block text-sm font-medium">Fee Tier</label>
+                <select id="feeTier" class="w-full p-3 border rounded-md mb-4">
+                    <option value="0.25">0.25%</option>
+                    <option value="0.5">0.5%</option>
+                    <option value="1">1%</option>
+                    <option value="2">2%</option>
+                    <option value="4">4%</option>
+                </select>
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-lg font-semibold mb-2">Fee Preview</h3>
+                    <div id="poolFeeBreakdown" class="text-sm">
+                        <div class="flex justify-between mb-1">
+                            <span>Base Pool Creation:</span>
+                            <span>0.02 SOL</span>
+                        </div>
+                        <div id="customRatioFee" class="flex justify-between mb-1 text-gray-400">
+                            <span>Custom Ratio:</span>
+                            <span>0.01 SOL</span>
+                        </div>
+                        <div id="highFeeTierFee" class="flex justify-between mb-1 text-gray-400">
+                            <span>High Fee Tier:</span>
+                            <span>0.01 SOL</span>
+                        </div>
+                        <div id="priceRangeFee" class="flex justify-between mb-1 text-gray-400">
+                            <span>Custom Price Range:</span>
+                            <span>0.015 SOL</span>
+                        </div>
+                        <div id="advancedSettingsFee" class="flex justify-between mb-1 text-gray-400">
+                            <span>Advanced Settings:</span>
+                            <span>0.02 SOL</span>
+                        </div>
+                        <div class="border-t border-gray-300 mt-2 pt-2 flex justify-between font-semibold">
+                            <span>Total Fee:</span>
+                            <span id="poolTotalFee">0.02 SOL</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-4 mb-6">
+                    <div class="flex items-center group relative">
+                        <input type="checkbox" id="customRatio" class="mr-2" onchange="updatePoolFeePreview()">
+                        <label for="customRatio" class="text-sm font-medium">Custom Token Ratio</label>
+                        <div class="hidden group-hover:block absolute left-full ml-2 bg-gray-800 text-white p-2 rounded text-xs w-48">
+                            Set a custom ratio between tokens in the pool
+                        </div>
+                    </div>
+
+                    <div class="flex items-center group relative">
+                        <input type="checkbox" id="highFeeTier" class="mr-2" onchange="updatePoolFeePreview()">
+                        <label for="highFeeTier" class="text-sm font-medium">High Fee Tier (>1%)</label>
+                        <div class="hidden group-hover:block absolute left-full ml-2 bg-gray-800 text-white p-2 rounded text-xs w-48">
+                            Set higher trading fees for increased LP rewards
+                        </div>
+                    </div>
+
+                    <div class="flex items-center group relative">
+                        <input type="checkbox" id="customPriceRange" class="mr-2" onchange="updatePoolFeePreview()">
+                        <label for="customPriceRange" class="text-sm font-medium">Custom Price Range</label>
+                        <div class="hidden group-hover:block absolute left-full ml-2 bg-gray-800 text-white p-2 rounded text-xs w-48">
+                            Set specific price ranges for concentrated liquidity
+                        </div>
+                    </div>
+
+                    <div class="flex items-center group relative">
+                        <input type="checkbox" id="advancedSettings" class="mr-2" onchange="updatePoolFeePreview()">
+                        <label for="advancedSettings" class="text-sm font-medium">Advanced Settings</label>
+                        <div class="hidden group-hover:block absolute left-full ml-2 bg-gray-800 text-white p-2 rounded text-xs w-48">
+                            Configure advanced pool parameters
+                        </div>
+                    </div>
+                </div>
+                <div id="customRatioFields" class="hidden mb-4">
+                    <label for="baseRatio" class="block text-sm font-medium">Base Ratio</label>
+                    <input type="number" id="baseRatio" class="w-full p-3 border rounded-md mb-2" placeholder="Enter base ratio">
+                    <label for="quoteRatio" class="block text-sm font-medium">Quote Ratio</label>
+                    <input type="number" id="quoteRatio" class="w-full p-3 border rounded-md mb-2" placeholder="Enter quote ratio">
+                </div>
+                <div id="customPriceRangeFields" class="hidden mb-4">
+                    <label for="minPrice" class="block text-sm font-medium">Min Price</label>
+                    <input type="number" id="minPrice" class="w-full p-3 border rounded-md mb-2" placeholder="Enter min price">
+                    <label for="maxPrice" class="block text-sm font-medium">Max Price</label>
+                    <input type="number" id="maxPrice" class="w-full p-3 border rounded-md mb-2" placeholder="Enter max price">
+                </div>
+                <button id="createLiquidityButton" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Create Liquidity</button>
+            </form>
+        </section>
+        <section class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-6">How Liquidity Pools Work</h2>
+            <p class="text-gray-700 mb-4">
+                A liquidity pool is a collection of funds locked in a smart contract. These pools are used by decentralized exchanges (DEXes) to facilitate trading. By contributing to liquidity pools, you help ensure that there is enough supply for traders to execute buy and sell orders.
+            </p>
+            <p class="text-gray-700 mb-4">
+                When you add liquidity to a pool, you provide two assets (such as SOL and USDC) in a specific ratio. The pool facilitates trades between these assets. In return, you earn a portion of the transaction fees generated by the trades within the pool, based on the amount of liquidity you’ve contributed.
+            </p>
+            <p class="text-gray-700 mb-4">
+                The fee you can earn depends on the fee tier set for the pool. The higher the fee tier, the higher the reward for liquidity providers. However, this also comes with increased risk, as prices can fluctuate more significantly at higher fee tiers.
+            </p>
+            <p class="text-gray-700">
+                Liquidity pools play a vital role in decentralized finance (DeFi) by improving market efficiency, reducing slippage, and providing users with an opportunity to earn passive income from their digital assets.
+            </p>
+        </section>
+    </main>
+
+    <footer class="bg-blue-600 text-white p-6 text-center mt-auto">
+        <div class="container mx-auto">
+            <p>&copy; 2024 SolMint</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Solana connection and state
+        let connection;
+        let walletPublicKey = null;
+        let selectedNetwork = localStorage.getItem('selectedNetwork') || 'devnet';
+        let currentWallet = null;
+        let isConnecting = false;
+
+        // Initialize connection on page load
+        window.addEventListener('load', async () => {
+            initializeConnection(selectedNetwork);
+            document.getElementById('networkSelect').value = selectedNetwork;
+            
+            // Auto-connect to last used wallet if available
+            const lastUsedWallet = localStorage.getItem('lastUsedWallet');
+            if (lastUsedWallet) {
+                await autoConnectWallet(lastUsedWallet);
+            }
+
+            // Add event listeners for custom ratio and price range fields
+            document.getElementById('customRatio').addEventListener('change', () => {
+                const customRatioFields = document.getElementById('customRatioFields');
+                if (document.getElementById('customRatio').checked) {
+                    customRatioFields.classList.remove('hidden');
+                } else {
+                    customRatioFields.classList.add('hidden');
+                }
+            });
+
+            document.getElementById('customPriceRange').addEventListener('change', () => {
+                const customPriceRangeFields = document.getElementById('customPriceRangeFields');
+                if (document.getElementById('customPriceRange').checked) {
+                    customPriceRangeFields.classList.remove('hidden');
+                } else {
+                    customPriceRangeFields.classList.add('hidden');
+                }
+            });
+
+            // Add event listeners for fee preview updates
+            document.addEventListener('DOMContentLoaded', () => {
+                updatePoolFeePreview();
+            });
+        });
+
+        function initializeConnection(network) {
+            try {
+                const networks = {
+                    'devnet': 'https://api.devnet.solana.com',
+                    'testnet': 'https://api.testnet.solana.com',
+                    'mainnet': 'https://api.mainnet-beta.solana.com'
+                };
+                connection = new solanaWeb3.Connection(networks[network], 'confirmed');
+                console.log(`Connected to ${network}`);
+            } catch (error) {
+                console.error('Failed to initialize connection:', error);
+                alert('Failed to connect to network. Please try again.');
+            }
+        }
+
+        async function autoConnectWallet(walletName) {
+            if (window.solana && walletName === 'phantom' || window.solflare && walletName === 'solflare') {
+                await connectSpecificWallet(walletName, true);
+            }
+        }
+
+        function showWalletModal() {
+            if (!isConnecting) {
+                document.getElementById('walletModal').classList.remove('hidden');
+            }
+        }
+
+        function closeWalletModal() {
+            document.getElementById('walletModal').classList.add('hidden');
+        }
+
+        async function connectSpecificWallet(walletName, isAutoConnect = false) {
+            if (isConnecting) return;
+            isConnecting = true;
+            
+            try {
+                let wallet;
+                if (walletName === 'phantom') {
+                    if (!window.solana || !window.solana.isPhantom) {
+                        if (!isAutoConnect) {
+                            alert("Phantom wallet is not installed. You will be redirected to install it.");
+                            window.open("https://phantom.app/", "_blank");
+                        }
+                        return;
+                    }
+                    wallet = window.solana;
+                } else if (walletName === 'solflare') {
+                    if (!window.solflare) {
+                        if (!isAutoConnect) {
+                            alert("Solflare wallet is not installed. You will be redirected to install it.");
+                            window.open("https://solflare.com/", "_blank");
+                        }
+                        return;
+                    }
+                    wallet = window.solflare;
+                }
+
+                // Check if wallet is already connected
+                if (currentWallet === wallet && walletPublicKey) {
+                    closeWalletModal();
+                    return;
+                }
+
+                // Disconnect any existing wallet connection
+                if (currentWallet) {
+                    await disconnectWallet();
+                }
+
+                currentWallet = wallet;
+                const resp = await wallet.connect();
+                walletPublicKey = resp.publicKey.toString();
+                
+                // Update button text and state
+                const connectButton = document.getElementById('connectWalletButton');
+                connectButton.textContent = `${walletName.charAt(0).toUpperCase() + walletName.slice(1)} (${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)})`;
+                connectButton.onclick = disconnectWallet;
+
+                // Ensure wallet is on the correct network
+                await switchWalletNetwork(selectedNetwork);
+                closeWalletModal();
+
+                // Save wallet preference
+                localStorage.setItem('lastUsedWallet', walletName);
+
+                // Refresh token dropdowns after wallet connection
+                await populateBaseTokenDropdown();
+
+                // Add wallet change listener
+                wallet.on('accountChanged', async () => {
+                    await disconnectWallet();
+                    await connectSpecificWallet(walletName);
+                });
+
+            } catch (err) {
+                console.error("Error connecting to wallet:", err);
+                if (err.code === 4001) {
+                    if (!isAutoConnect) {
+                        alert("Wallet connection was rejected by the user.");
+                    }
+                } else {
+                    alert("Failed to connect to wallet: " + err.message);
+                }
+                currentWallet = null;
+                walletPublicKey = null;
+            } finally {
+                isConnecting = false;
+            }
+        }
+
+        async function disconnectWallet() {
+            try {
+                if (currentWallet) {
+                    await currentWallet.disconnect();
+                    localStorage.removeItem('lastUsedWallet');
+                }
+            } catch (err) {
+                console.error("Error disconnecting wallet:", err);
+            } finally {
+                // Always reset the state and UI, even if disconnect fails
+                walletPublicKey = null;
+                currentWallet = null;
+                const connectButton = document.getElementById('connectWalletButton');
+                connectButton.textContent = "Connect Wallet";
+                connectButton.onclick = showWalletModal;
+                
+                // Clear token dropdowns
+                const baseTokenSelect = document.getElementById("baseToken");
+                const quoteTokenSelect = document.getElementById("quoteToken");
+                baseTokenSelect.innerHTML = '';
+                quoteTokenSelect.innerHTML = '';
+            }
+        }
+
+        async function updateNetwork() {
+            const newNetwork = document.getElementById('networkSelect').value;
+            
+            try {
+                // Save network preference
+                localStorage.setItem('selectedNetwork', newNetwork);
+                selectedNetwork = newNetwork;
+                
+                // Reinitialize connection
+                initializeConnection(newNetwork);
+                
+                // If wallet is connected, switch its network
+                if (currentWallet && walletPublicKey) {
+                    await switchWalletNetwork(newNetwork);
+                    // Refresh token dropdowns after network change
+                    await populateBaseTokenDropdown();
+                }
+                
+                console.log(`Successfully switched to ${newNetwork}`);
+            } catch (error) {
+                console.error('Failed to switch network:', error);
+                alert('Failed to switch network. Please try again.');
+            }
+        }
+
+        async function switchWalletNetwork(network) {
+            if (!currentWallet) return;
+
+            try {
+                const networkConfig = {
+                    devnet: { url: 'https://api.devnet.solana.com', name: 'devnet' },
+                    testnet: { url: 'https://api.testnet.solana.com', name: 'testnet' },
+                    mainnet: { url: 'https://api.mainnet-beta.solana.com', name: 'mainnet-beta' }
+                };
+
+                if (currentWallet.setNetwork) {
+                    await currentWallet.setNetwork(networkConfig[network].name);
+                } else {
+                    console.log('Wallet does not support network switching');
+                }
+            } catch (error) {
+                console.error('Error switching wallet network:', error);
+                alert('Please switch your wallet network manually to ' + network);
+            }
+        }
+
+        // Function to populate token dropdowns
+        async function populateBaseTokenDropdown() {
+            if (!window.provider || !window.provider.publicKey) {
+                console.log("Wallet not connected");
+                return;
+            }
+
+            const baseTokenSelect = document.getElementById("baseToken");
+            const quoteTokenSelect = document.getElementById("quoteToken");
+            baseTokenSelect.innerHTML = '';
+            quoteTokenSelect.innerHTML = '';
+
+            try {
+                // Get connection based on selected network
+                const connection = new solanaWeb3.Connection(
+                    solanaWeb3.clusterApiUrl(getCurrentNetwork()),
+                    'confirmed'
+                );
+
+                // Get all token accounts owned by the user
+                const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+                    window.provider.publicKey,
+                    {
+                        programId: splToken.TOKEN_PROGRAM_ID,
+                    }
+                );
+
+                // Add tokens to both dropdowns
+                tokenAccounts.value.forEach(tokenAccount => {
+                    const accountData = tokenAccount.account.data.parsed.info;
+                    const mintAddress = accountData.mint;
+                    const tokenBalance = accountData.tokenAmount.uiAmount;
+                    
+                    if (tokenBalance > 0) {
+                        const baseOption = document.createElement("option");
+                        baseOption.value = mintAddress;
+                        baseOption.text = `${mintAddress.slice(0, 4)}...${mintAddress.slice(-4)} (${tokenBalance})`;
+                        baseTokenSelect.appendChild(baseOption);
+
+                        const quoteOption = document.createElement("option");
+                        quoteOption.value = mintAddress;
+                        quoteOption.text = `${mintAddress.slice(0, 4)}...${mintAddress.slice(-4)} (${tokenBalance})`;
+                        quoteTokenSelect.appendChild(quoteOption);
+                    }
+                });
+
+                // Add native SOL as an option
+                const solBalance = await connection.getBalance(window.provider.publicKey);
+                const solOption = document.createElement("option");
+                solOption.value = "SOL";
+                solOption.text = `SOL (${solBalance / solanaWeb3.LAMPORTS_PER_SOL})`;
+                baseTokenSelect.appendChild(solOption);
+                
+                const solOptionQuote = document.createElement("option");
+                solOptionQuote.value = "SOL";
+                solOptionQuote.text = `SOL (${solBalance / solanaWeb3.LAMPORTS_PER_SOL})`;
+                quoteTokenSelect.appendChild(solOptionQuote);
+
+            } catch (error) {
+                console.error("Error fetching token accounts:", error);
+            }
+        }
+
+        // Handle form submission
+        document.querySelector("form").addEventListener("submit", async function(event) {
+            event.preventDefault();
+            
+            if (!walletPublicKey) {
+                alert('Please connect your wallet first');
+                return;
+            }
+
+            const baseToken = document.getElementById("baseToken").value;
+            const quoteToken = document.getElementById("quoteToken").value;
+            const liquidityAmount = parseFloat(document.getElementById("liquidityAmount").value);
+            const feeTier = parseFloat(document.getElementById("feeTier").value);
+            
+            // Validation
+            if (baseToken === quoteToken) {
+                alert('Base token and quote token must be different');
+                return;
+            }
+
+            if (isNaN(liquidityAmount) || liquidityAmount <= 0) {
+                alert('Please enter a valid liquidity amount greater than 0');
+                return;
+            }
+
+            try {
+                document.getElementById("createLiquidityButton").disabled = true;
+                document.getElementById("createLiquidityButton").textContent = "Creating Pool...";
+                
+                await createLiquidityPool(baseToken, quoteToken, liquidityAmount, feeTier);
+                alert('Liquidity pool created successfully!');
+            } catch (error) {
+                alert("Failed to create liquidity pool: " + error.message);
+            } finally {
+                document.getElementById("createLiquidityButton").disabled = false;
+                document.getElementById("createLiquidityButton").textContent = "Create Liquidity";
+            }
+        });
+
+        async function createLiquidityPool(baseToken, quoteToken, liquidityAmount, feeTier) {
+            if (!currentWallet || !walletPublicKey) {
+                alert('Please connect your wallet first');
+                return;
+            }
+
+            try {
+                // Get advanced options
+                const customRatio = document.getElementById('customRatio')?.checked || false;
+                const customPriceRange = document.getElementById('customPriceRange')?.checked || false;
+                const advancedSettings = document.getElementById('advancedSettings')?.checked || false;
+
+                // Calculate total fee
+                const totalFee = await calculatePoolFee({
+                    customRatio,
+                    feeTier,
+                    customPriceRange,
+                    advancedSettings
+                });
+
+                // Check if user has enough SOL for the fee
+                const balance = await connection.getBalance(new solanaWeb3.PublicKey(walletPublicKey));
+                const minimumRequired = solanaWeb3.LAMPORTS_PER_SOL * (totalFee + 0.01); // Fee + minimum for transaction
+                
+                if (balance < minimumRequired) {
+                    alert(`Insufficient balance. You need at least ${totalFee + 0.01} SOL for this operation.\n\n` +
+                          `Fee breakdown:\n` +
+                          `- Base pool creation: ${FEES.BASE_POOL_CREATION} SOL\n` +
+                          `${customRatio ? `- Custom ratio: ${FEES.CUSTOM_RATIO} SOL\n` : ''}` +
+                          `${parseFloat(feeTier) > 1 ? `- High fee tier: ${FEES.HIGH_FEE_TIER} SOL\n` : ''}` +
+                          `${customPriceRange ? `- Custom price range: ${FEES.PRICE_RANGE} SOL\n` : ''}` +
+                          `${advancedSettings ? `- Advanced settings: ${FEES.ADVANCED_SETTINGS} SOL\n` : ''}` +
+                          `Total: ${totalFee} SOL`);
+                    return;
+                }
+
+                // Create fee transfer instruction
+                const FEE_ACCOUNT = new solanaWeb3.PublicKey('6zkf4DviZZkpWVEh53MrcQV6vGXGpESnNXgAvU6KpBUH');
+                const feeInstruction = solanaWeb3.SystemProgram.transfer({
+                    fromPubkey: new solanaWeb3.PublicKey(walletPublicKey),
+                    toPubkey: FEE_ACCOUNT,
+                    lamports: totalFee * solanaWeb3.LAMPORTS_PER_SOL
+                });
+
+                // Get token accounts
+                const baseTokenAccount = await getTokenAccount(baseToken);
+                const quoteTokenAccount = await getTokenAccount(quoteToken);
+
+                // Create pool configuration with advanced options
+                const poolConfig = {
+                    baseToken,
+                    quoteToken,
+                    liquidityAmount: parseFloat(liquidityAmount),
+                    feeTier: parseFloat(feeTier),
+                    customRatio,
+                    customPriceRange,
+                    advancedSettings,
+                    priceRange: customPriceRange ? {
+                        min: parseFloat(document.getElementById('minPrice').value),
+                        max: parseFloat(document.getElementById('maxPrice').value)
+                    } : null,
+                    tokenRatio: customRatio ? {
+                        baseRatio: parseFloat(document.getElementById('baseRatio').value),
+                        quoteRatio: parseFloat(document.getElementById('quoteRatio').value)
+                    } : null
+                };
+
+                // Create liquidity pool transaction
+                const poolTransaction = await createRaydiumPoolTransaction(
+                    connection,
+                    poolConfig,
+                    new solanaWeb3.PublicKey(walletPublicKey),
+                    baseTokenAccount,
+                    quoteTokenAccount
+                );
+
+                // Combine fee transfer and pool creation into a single transaction
+                const transaction = new solanaWeb3.Transaction()
+                    .add(feeInstruction)
+                    .add(poolTransaction);
+
+                // Sign and send the transaction
+                const signature = await currentWallet.signAndSendTransaction(transaction);
+                
+                console.log('Transaction sent:', signature);
+                alert(`Liquidity pool created successfully!\nTransaction signature: ${signature}\n\nTotal fee paid: ${totalFee} SOL`);
+
+                // Store pool creation info
+                const createdPools = JSON.parse(localStorage.getItem('createdPools') || '[]');
+                createdPools.push({
+                    baseToken,
+                    quoteToken,
+                    txId: signature,
+                    timestamp: Date.now()
+                });
+                localStorage.setItem('createdPools', JSON.stringify(createdPools));
+
+            } catch (error) {
+                console.error('Error creating liquidity pool:', error);
+                alert('Failed to create liquidity pool: ' + error.message);
+            }
+        }
+
+        async function calculatePoolFee(options) {
+            let totalFee = FEES.BASE_POOL_CREATION;
+            
+            if (options.customRatio) totalFee += FEES.CUSTOM_RATIO;
+            if (parseFloat(options.feeTier) > 1) totalFee += FEES.HIGH_FEE_TIER;
+            if (options.customPriceRange) totalFee += FEES.PRICE_RANGE;
+            if (options.advancedSettings) totalFee += FEES.ADVANCED_SETTINGS;
+            
+            return totalFee;
+        }
+
+        async function getTokenAccount(token) {
+            const mint = new solanaWeb3.PublicKey(token);
+            const owner = new solanaWeb3.PublicKey(walletPublicKey);
+            
+            // Get or create associated token account
+            return await createAssociatedTokenAccountIfNotExists(mint, owner);
+        }
+
+        async function createRaydiumPoolTransaction(connection, poolConfig, userPublicKey, baseTokenAccount, quoteTokenAccount) {
+            const { baseToken, quoteToken, liquidityAmount, feeTier, customRatio, customPriceRange, advancedSettings, priceRange, tokenRatio } = poolConfig;
+            
+            // Get token mint addresses
+            const baseTokenMint = await getTokenMintAddress(baseToken);
+            const quoteTokenMint = await getTokenMintAddress(quoteToken);
+
+            // Initialize Raydium SDK
+            const RAYDIUM_PROGRAM_ID = getRaydiumProgramId(selectedNetwork);
+            
+            // Create the pool settings
+            const poolConfig = {
+                baseMint: baseTokenMint,
+                quoteMint: quoteTokenMint,
+                baseAmount: new BN(liquidityAmount * (10 ** 9)), // Assuming 9 decimals
+                quoteAmount: new BN(liquidityAmount * (10 ** 9)), // Equal amounts for initial liquidity
+                startPrice: 1, // 1:1 ratio for initial pool
+                feeTier: feeTier * 100 // Convert percentage to basis points
+            };
+
+            // Create transaction for pool creation
+            const transaction = await createRaydiumPoolTransaction(
+                connection,
+                poolConfig,
+                new solanaWeb3.PublicKey(walletPublicKey),
+                baseTokenAccount,
+                quoteTokenAccount
+            );
+
+            // Sign and send transaction
+            const signedTransaction = await currentWallet.signTransaction(transaction);
+            const txId = await connection.sendRawTransaction(signedTransaction.serialize());
+            
+            console.log('Waiting for transaction confirmation...');
+            const confirmation = await connection.confirmTransaction(txId, 'confirmed');
+            
+            if (confirmation.value.err) {
+                throw new Error('Transaction failed to confirm');
+            }
+
+            console.log('Liquidity pool created successfully on Raydium!');
+            console.log('Transaction ID:', txId);
+            
+            // Store pool info to localStorage
+            const poolInfo = {
+                baseToken,
+                quoteToken,
+                txId,
+                timestamp: Date.now()
+            };
+            const pools = JSON.parse(localStorage.getItem('createdPools') || '[]');
+            pools.push(poolInfo);
+            localStorage.setItem('createdPools', JSON.stringify(pools));
+
+            return txId;
+        }
+
+        function getRaydiumProgramId(network) {
+            const programIds = {
+                'mainnet': 'RVKd61ztZW9GUwhRbbLoYVRE5Xf1B2tVscKqwZqXgEr',
+                'devnet': '27haf8L6oxUeXrHrgEgsexjSY5hbVUWEmvv9Nyxg8vQv',
+                'testnet': '27haf8L6oxUeXrHrgEgsexjSY5hbVUWEmvv9Nyxg8vQv'
+            };
+            return new solanaWeb3.PublicKey(programIds[network]);
+        }
+
+        async function createRaydiumPoolTransaction(connection, poolConfig, userPublicKey, baseTokenAccount, quoteTokenAccount) {
+            const { baseMint, quoteMint, baseAmount, quoteAmount, startPrice, feeTier } = poolConfig;
+            
+            // Get Raydium pool program
+            const ammProgram = new raydium.Program(connection, getRaydiumProgramId(selectedNetwork));
+            
+            // Calculate pool token mint address (PDA)
+            const [poolTokenMint] = await solanaWeb3.PublicKey.findProgramAddress(
+                [
+                    Buffer.from('amm_pool'),
+                    baseMint.toBuffer(),
+                    quoteMint.toBuffer()
+                ],
+                ammProgram.programId
+            );
+
+            // Create pool token account
+            const poolTokenAccount = await createAssociatedTokenAccountIfNotExists(
+                poolTokenMint,
+                userPublicKey
+            );
+
+            // Create the AMM pool account
+            const [ammAccount] = await solanaWeb3.PublicKey.findProgramAddress(
+                [
+                    Buffer.from('amm_account'),
+                    poolTokenMint.toBuffer()
+                ],
+                ammProgram.programId
+            );
+
+            // Create transaction
+            const transaction = new solanaWeb3.Transaction();
+
+            // Add create pool instruction
+            const createPoolIx = await ammProgram.createPool({
+                poolTokenMint,
+                ammAccount,
+                baseMint,
+                quoteMint,
+                baseTokenAccount,
+                quoteTokenAccount,
+                poolTokenAccount,
+                userPublicKey,
+                baseAmount,
+                quoteAmount,
+                startPrice,
+                feeTier
+            });
+
+            transaction.add(createPoolIx);
+
+            // Get recent blockhash
+            const { blockhash } = await connection.getRecentBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = userPublicKey;
+
+            return transaction;
+        }
+
+        async function getTokenMintAddress(tokenSymbol) {
+            // Common token addresses across networks
+            const tokenAddresses = {
+                'mainnet': {
+                    'SOL': 'So11111111111111111111111111111111111111112',
+                    'USDC': 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                    'USDT': 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+                    'RAY': '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R'
+                },
+                'devnet': {
+                    'SOL': 'So11111111111111111111111111111111111111112',
+                    'USDC': 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr',
+                    'USDT': 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'
+                }
+            };
+
+            // For custom tokens, get from localStorage
+            const customTokens = JSON.parse(localStorage.getItem('createdTokens') || '{}');
+            const networkTokens = { ...tokenAddresses[selectedNetwork], ...customTokens };
+
+            if (!networkTokens[tokenSymbol]) {
+                throw new Error(`Token ${tokenSymbol} not found on ${selectedNetwork}`);
+            }
+
+            return new solanaWeb3.PublicKey(networkTokens[tokenSymbol]);
+        }
+
+        async function createAssociatedTokenAccountIfNotExists(mint, owner) {
+            const associatedTokenAddress = await splToken.Token.getAssociatedTokenAddress(
+                splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+                splToken.TOKEN_PROGRAM_ID,
+                mint,
+                owner
+            );
+
+            try {
+                await splToken.Token.getAccountInfo(connection, associatedTokenAddress);
+                return associatedTokenAddress;
+            } catch (error) {
+                // Account doesn't exist, create it
+                const transaction = new solanaWeb3.Transaction().add(
+                    splToken.Token.createAssociatedTokenAccountInstruction(
+                        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+                        splToken.TOKEN_PROGRAM_ID,
+                        mint,
+                        associatedTokenAddress,
+                        owner,
+                        new solanaWeb3.PublicKey(walletPublicKey)
+                    )
+                );
+
+                const signedTransaction = await currentWallet.signTransaction(transaction);
+                await connection.sendRawTransaction(signedTransaction.serialize());
+                return associatedTokenAddress;
+            }
+        }
+
+        function updatePoolFeePreview() {
+            const customRatio = document.getElementById('customRatio').checked;
+            const highFeeTier = document.getElementById('highFeeTier').checked;
+            const customPriceRange = document.getElementById('customPriceRange').checked;
+            const advancedSettings = document.getElementById('advancedSettings').checked;
+
+            // Update fee line items visibility
+            document.getElementById('customRatioFee').className = 
+                `flex justify-between mb-1 ${customRatio ? 'text-gray-900' : 'text-gray-400'}`;
+            document.getElementById('highFeeTierFee').className = 
+                `flex justify-between mb-1 ${highFeeTier ? 'text-gray-900' : 'text-gray-400'}`;
+            document.getElementById('priceRangeFee').className = 
+                `flex justify-between mb-1 ${customPriceRange ? 'text-gray-900' : 'text-gray-400'}`;
+            document.getElementById('advancedSettingsFee').className = 
+                `flex justify-between mb-1 ${advancedSettings ? 'text-gray-900' : 'text-gray-400'}`;
+
+            // Calculate total fee
+            let totalFee = FEES.BASE_POOL_CREATION;
+            if (customRatio) totalFee += FEES.CUSTOM_RATIO;
+            if (highFeeTier) totalFee += FEES.HIGH_FEE_TIER;
+            if (customPriceRange) totalFee += FEES.PRICE_RANGE;
+            if (advancedSettings) totalFee += FEES.ADVANCED_SETTINGS;
+
+            document.getElementById('poolTotalFee').textContent = `${totalFee.toFixed(3)} SOL`;
+        }
+
+        const FEES = {
+            BASE_POOL_CREATION: 0.02,      // Base fee for pool creation
+            CUSTOM_RATIO: 0.01,            // Additional fee for custom ratio
+            HIGH_FEE_TIER: 0.01,           // Additional fee for high fee tiers (>1%)
+            PRICE_RANGE: 0.015,            // Additional fee for custom price range
+            ADVANCED_SETTINGS: 0.02         // Additional fee for advanced pool settings
+        };
+    </script>
+</body>
+</html>
