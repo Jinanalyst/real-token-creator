@@ -1,0 +1,85 @@
+/* Ensure full height for body and html */
+html, body {
+    height: 100%;
+    margin: 0;
+    display: flex;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    background-color: #1E40AF; /* Blue color for sidebar */
+    width: 320px; /* Sidebar width */
+    height: 100%; /* Fill entire height */
+    position: fixed; /* Fixed to the left */
+    top: 0;
+    left: 0;
+    padding-top: 20px;
+    box-sizing: border-box; /* Include padding in height */
+}
+
+/* Network Selector Styling */
+#network-selector {
+    width: 100%; /* Full width */
+    padding: 10px;
+    background-color: #1E40AF; /* Sidebar background */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-size: 1rem;
+}
+
+/* Hover effect on the network dropdown */
+#network-selector:hover {
+    background-color: #1e3a8a; /* Darker blue on hover */
+}
+/* Sidebar Links */
+aside a {
+    text-decoration: none;
+    color: white;
+}
+
+aside a:hover {
+    background-color: #2563eb;
+}
+
+/* Main Content Styles */
+main {
+    margin-left: 320px; /* Offset for sidebar */
+    padding: 20px;
+    flex: 1; /* Take remaining space */
+    background-color: white;
+    box-sizing: border-box;
+    overflow: auto; /* Allow scrolling if content overflows */
+}
+
+/* Footer Styles */
+footer {
+    background-color: #1E40AF; /* Match sidebar color */
+    color: white;
+    text-align: center;
+    padding: 10px;
+    position: fixed;
+    bottom: 0;
+    left: 320px; /* Offset for sidebar width */
+    width: calc(100% - 320px); /* Full width minus sidebar */
+}
+
+/* Responsive Styles for Mobile */
+@media (max-width: 768px) {
+    aside {
+        width: 100%;
+        position: relative;
+        height: auto;
+    }
+
+    main {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    footer {
+        left: 0;
+        width: 100%;
+    }
+}
