@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Create Token | SolMint</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.73.0/lib/index.iife.min.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+
+<!-- Header -->
+<header class="bg-blue-600 text-white p-6">
+    <div class="flex justify-center items-center flex-col">
+        <h1 class="text-3xl font-bold">SolMint</h1>
+        <nav class="mt-4 flex justify-center space-x-8">
+            <a href="create-token.html" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
+                Create Token
+            </a>
+            <a href="create-liquidity.html" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
+                Create Liquidity Pool
+            </a>
+            <button id="connectWalletButton" onclick="showWalletModal()" 
+                class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                Connect Wallet
+            </button>
+            <select id="networkSelect" onchange="updateNetwork()" class="bg-white text-blue-600 border rounded-md py-2 px-4 hover:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition duration-300">
+                <option value="devnet">Devnet</option>
+                <option value="testnet">Testnet</option>
+                <option value="mainnet">Mainnet</option>
+            </select>
+        </nav>
+    </div>
+</header>
+
+<!-- Wallet Selector Modal -->
+<div id="walletModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+        <h3 class="text-xl font-bold mb-4">Select Wallet</h3>
+        <div class="space-y-4">
+            <button onclick="connectSpecificWallet('phantom')" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 flex items-center justify-center">
+                <img src="https://phantom.app/img/phantom-logo.svg" class="w-6 h-6 mr-2" alt="Phantom">
+                Phantom
+            </button>
+            <button onclick="connectSpecificWallet('solflare')" class="w-full bg-orange-600 text-white py-2 px-4 rounded-md hover:bg-orange-700 flex items-center justify-center">
+                <img src="https://solflare.com/favicon.ico" class="w-6 h-6 mr-2" alt="Solflare">
+                Solflare
+            </button>
+        </div>
+        <button onclick="closeWalletModal()" class="mt-4 w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-100">
+            Cancel
+        </button>
+    </div>
+</div>
+
+<!-- Main Content -->
+<main class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+    <section class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-bold mb-6">Create Your Token</h2>
+        <form id="createTokenForm" onsubmit="event.preventDefault(); createToken();">
+            <label for="tokenName" class="block text-sm font-medium">Token Name</label>
+            <input type="text" id="tokenName" class="w-full p-3 border rounded-md mb-4" required>
+            
+            <label for="tokenSymbol" class="block text-sm font-medium">Token Symbol</label>
+            <input type="text" id="tokenSymbol" class="w-full p-3 border rounded-md mb-4" required>
+            
+            <label for="totalSupply" class="block text-sm font-medium">Total Supply</label>
+            <input type="number" id="totalSupply" class="w-full p-3 border rounded-md mb-4" required>
+            
+            <div class="flex items-center mb-4">
+                <input type="checkbox" id="revokeMint" class="mr-2">
+                <label for="revokeMint" class="text-sm font-medium">Revoke Mint Authority</label>
+            </div>
+    
+            <div class="flex items-center mb-4">
+                <input type="checkbox" id="freezeAuthority" class="mr-2">
+                <label for="freezeAuthority" class="text-sm font-medium">Freeze Authority</label>
+            </div>
+            
+            <button id="createTokenButton" class="bg-blue-600 text-white py-3 rounded-md">
+                Create Token
+            </button>
+        </form>
+    </section>
+    <!-- Token Creation Description Section -->
+<section class="bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold mb-6">What is a Token?</h2>
+    <p class="text-sm text-gray-700 mb-4">
+        A token is a digital asset that represents ownership, value, or access to a specific service or product. In the context of SolanaMint, you can create custom tokens for various purposes like decentralized finance (DeFi), gaming, or as part of a tokenized ecosystem.
+    </p>
+    <h3 class="text-lg font-semibold mb-2">Key Features of Your Token</h3>
+    <ul class="list-disc pl-5 text-sm text-gray-700">
+        <li>Customizable token name and symbol</li>
+        <li>Ability to set total supply and control token minting</li>
+        <li>Manage permissions like freeze and revoke minting authority</li>
+    </ul>
+    <h3 class="text-lg font-semibold mb-2 mt-4">Why Create a Token?</h3>
+    <p class="text-sm text-gray-700">
+        Tokens are the backbone of blockchain projects, enabling the creation of decentralized ecosystems, rewards systems, and incentivized networks. By creating your own token, you can engage with new possibilities in blockchain technology.
+    </p>
+</section>
+</main>
+
+<!-- Footer -->
+<footer class="bg-blue-600 text-white p-6 text-center mt-auto">
+    <div class="container mx-auto">
+        <p>&copy; 2024 SolMint | <a href="https://t.me/jinwoo5385" class="text-blue-300">Contact us</a></p>
+    </div>
+</footer>
+
+<script>
+    // Initialize Solana connection and state
+    let connection;
+    let walletPublicKey = null;
+    let selectedNetwork = localStorage.getItem('selectedNetwork') || 'devnet';
+    let currentWallet = null;
+
+    // Initialize connection on page load
+    window.addEventListener('load', () => {
+        initializeConnection(selectedNetwork);
+        document.getElementById('networkSelect').value = selectedNetwork;
+    });
+
+    function initializeConnection(network) {
+        const networks = {
+            'devnet': 'https://api.devnet.solana.com',
+            'testnet': 'https://api.testnet.solana.com',
+            'mainnet': 'https://api.mainnet-beta.solana.com'
+        };
+        connection = new solanaWeb3.Connection(networks[network]);
+    }
+
+    function showWalletModal() {
+        document.getElementById('walletModal').classList.remove('hidden');
+    }
+
+    function closeWalletModal() {
+        document.getElementById('walletModal').classList.add('hidden');
+    }
+
+    async function connectSpecificWallet(walletName) {
+        try {
+            let wallet;
+            if (walletName === 'phantom') {
+                if (!window.solana || !window.solana.isPhantom) {
+                    alert("Phantom wallet is not installed. You will be redirected to install it.");
+                    window.open("https://phantom.app/", "_blank");
+                    return;
+                }
+                wallet = window.solana;
+            } else if (walletName === 'solflare') {
+                if (!window.solflare) {
+                    alert("Solflare wallet is not installed. You will be redirected to install it.");
+                    window.open("https://solflare.com/", "_blank");
+                    return;
+                }
+                wallet = window.solflare;
+            }
+
+            // Disconnect any existing wallet connection
+            if (currentWallet) {
+                await disconnectWallet();
+            }
+
+            currentWallet = wallet;
+            const resp = await wallet.connect();
+            walletPublicKey = resp.publicKey.toString();
+            
+            // Update button text and state
+            const connectButton = document.getElementById('connectWalletButton');
+            connectButton.textContent = `${walletName.charAt(0).toUpperCase() + walletName.slice(1)} (${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)})`;
+            connectButton.onclick = disconnectWallet;
+
+            // Ensure wallet is on the correct network
+            await switchWalletNetwork(selectedNetwork);
+            closeWalletModal();
+
+            // Save wallet preference
+            localStorage.setItem('lastUsedWallet', walletName);
+        } catch (err) {
+            console.error("Error connecting to wallet:", err);
+            if (err.code === 4001) {
+                alert("Wallet connection was rejected by the user.");
+            } else {
+                alert("Failed to connect to wallet: " + err.message);
+            }
+            currentWallet = null;
+            walletPublicKey = null;
+        }
+    }
+
+    async function disconnectWallet() {
+        try {
+            if (currentWallet) {
+                await currentWallet.disconnect();
+                localStorage.removeItem('lastUsedWallet');
+            }
+        } catch (err) {
+            console.error("Error disconnecting wallet:", err);
+        } finally {
+            // Always reset the state and UI, even if disconnect fails
+            walletPublicKey = null;
+            currentWallet = null;
+            
+            // Reset button
+            const connectButton = document.getElementById('connectWalletButton');
+            connectButton.textContent = 'Connect Wallet';
+            connectButton.onclick = showWalletModal;
+        }
+    }
+
+    async function updateNetwork() {
+        const network = document.getElementById('networkSelect').value;
+        selectedNetwork = network;
+        localStorage.setItem('selectedNetwork', network);
+        
+        // Reinitialize connection with new network
+        initializeConnection(network);
+
+        // If wallet is connected, switch its network
+        if (currentWallet && walletPublicKey) {
+            try {
+                await switchWalletNetwork(network);
+            } catch (err) {
+                console.error("Error switching network:", err);
+                alert("Failed to switch network. Please try reconnecting your wallet.");
+            }
+        }
+    }
+
+    async function switchWalletNetwork(network) {
+        try {
+            if (currentWallet) {
+                if (currentWallet === window.solana) {
+                    // Phantom wallet
+                    await currentWallet.request({
+                        method: 'wallet_switchNetwork',
+                        params: { network }
+                    });
+                } else if (currentWallet === window.solflare) {
+                    // Solflare wallet
+                    await currentWallet.switchNetwork(network);
+                }
+            }
+        } catch (err) {
+            console.error("Error switching network in wallet:", err);
+            alert("Failed to switch network in wallet. Please switch manually in your wallet.");
+        }
+    }
+
+    // Create Token Action
+    async function createToken() {
+        if (!walletPublicKey) {
+            alert("Please connect your wallet first.");
+            return;
+        }
+
+        const tokenName = document.getElementById('tokenName').value.trim();
+        const tokenSymbol = document.getElementById('tokenSymbol').value.trim().toUpperCase();
+        const totalSupply = parseFloat(document.getElementById('totalSupply').value);
+        const revokeMint = document.getElementById('revokeMint').checked;
+        const freezeAuthority = document.getElementById('freezeAuthority').checked;
+
+        // Validate inputs
+        if (!tokenName || !tokenSymbol || isNaN(totalSupply) || totalSupply <= 0) {
+            alert("Please fill out all fields correctly. Total supply must be greater than 0.");
+            return;
+        }
+
+        if (tokenSymbol.length > 10) {
+            alert("Token symbol must be 10 characters or less.");
+            return;
+        }
+
+        // Disable form during transaction
+        const createButton = document.getElementById('createTokenButton');
+        try {
+            createButton.disabled = true;
+            createButton.innerHTML = '<span class="animate-pulse">Creating Token...</span>';
+
+            // Create the token
+            const mintAccount = solanaWeb3.Keypair.generate();
+            const transaction = await createTokenTransaction(
+                mintAccount,
+                tokenName,
+                tokenSymbol,
+                totalSupply,
+                revokeMint,
+                freezeAuthority
+            );
+
+            // Request signature and send transaction
+            const signature = await currentWallet.signAndSendTransaction(transaction);
+            
+            // Wait for confirmation
+            const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+            
+            if (confirmation.value.err) {
+                throw new Error('Transaction failed to confirm');
+            }
+
+            // Store token information
+            const tokenInfo = {
+                symbol: tokenSymbol,
+                name: tokenName,
+                mint: mintAccount.publicKey.toString(),
+                network: selectedNetwork,
+                createdAt: new Date().toISOString()
+            };
+
+            const tokens = JSON.parse(localStorage.getItem('createdTokens') || '[]');
+            tokens.push(tokenInfo);
+            localStorage.setItem('createdTokens', JSON.stringify(tokens));
+
+            // Show success message
+            alert(`Token created successfully!\nMint Address: ${mintAccount.publicKey.toString()}\nToken Symbol: ${tokenSymbol}`);
+            
+            // Reset form
+            document.getElementById('createTokenForm').reset();
+        } catch (error) {
+            console.error("Error creating token:", error);
+            let errorMessage = "Failed to create token: ";
+            
+            if (error.message.includes('insufficient funds')) {
+                errorMessage += "Insufficient funds for transaction. Please add more SOL to your wallet.";
+            } else if (error.message.includes('Network error')) {
+                errorMessage += "Network connection error. Please check your internet connection and try again.";
+            } else {
+                errorMessage += error.message;
+            }
+            
+            alert(errorMessage);
+        } finally {
+            // Re-enable form
+            createButton.disabled = false;
+            createButton.innerText = 'Create Token';
+        }
+    }
+
+    // Create token transaction
+    async function createTokenTransaction(mintAccount, tokenName, tokenSymbol, totalSupply, revokeMint, freezeAuthority) {
+        try {
+            const mintRent = await connection.getMinimumBalanceForRentExemption(solanaWeb3.MINT_LAYOUT.span);
+            const userPubKey = new solanaWeb3.PublicKey(walletPublicKey);
+
+            // Create mint account
+            const createAccountInstruction = solanaWeb3.SystemProgram.createAccount({
+                fromPubkey: userPubKey,
+                newAccountPubkey: mintAccount.publicKey,
+                lamports: mintRent,
+                space: solanaWeb3.MINT_LAYOUT.span,
+                programId: solanaWeb3.TOKEN_PROGRAM_ID
+            });
+
+            // Initialize mint
+            const initMintInstruction = solanaWeb3.Token.createInitializeMintInstruction(
+                solanaWeb3.TOKEN_PROGRAM_ID,
+                mintAccount.publicKey,
+                9, // decimals
+                userPubKey,
+                freezeAuthority ? userPubKey : null
+            );
+
+            // Create associated token account for the user
+            const associatedTokenAccount = await solanaWeb3.Token.getAssociatedTokenAddress(
+                solanaWeb3.ASSOCIATED_TOKEN_PROGRAM_ID,
+                solanaWeb3.TOKEN_PROGRAM_ID,
+                mintAccount.publicKey,
+                userPubKey
+            );
+
+            const createAssociatedAccountInstruction = solanaWeb3.Token.createAssociatedTokenAccountInstruction(
+                solanaWeb3.ASSOCIATED_TOKEN_PROGRAM_ID,
+                solanaWeb3.TOKEN_PROGRAM_ID,
+                mintAccount.publicKey,
+                associatedTokenAccount,
+                userPubKey,
+                userPubKey
+            );
+
+            // Mint tokens to the associated account
+            const mintToInstruction = solanaWeb3.Token.createMintToInstruction(
+                solanaWeb3.TOKEN_PROGRAM_ID,
+                mintAccount.publicKey,
+                associatedTokenAccount,
+                userPubKey,
+                [],
+                totalSupply * (10 ** 9) // Convert to smallest units (9 decimals)
+            );
+
+            // Build transaction
+            const transaction = new solanaWeb3.Transaction().add(
+                createAccountInstruction,
+                initMintInstruction,
+                createAssociatedAccountInstruction,
+                mintToInstruction
+            );
+
+            if (revokeMint) {
+                // Add instruction to revoke mint authority
+                transaction.add(
+                    solanaWeb3.Token.createSetAuthorityInstruction(
+                        solanaWeb3.TOKEN_PROGRAM_ID,
+                        mintAccount.publicKey,
+                        null,
+                        'MintTokens',
+                        userPubKey,
+                        []
+                    )
+                );
+            }
+
+            // Get recent blockhash
+            const { blockhash } = await connection.getRecentBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = userPubKey;
+
+            // Add mint account as signer
+            transaction.sign(mintAccount);
+
+            return transaction;
+        } catch (error) {
+            console.error('Error creating token transaction:', error);
+            throw new Error('Failed to create token transaction: ' + error.message);
+        }
+    }
+</script>
+
+<div id="modal-container"></div>
+</body>
+</html>
