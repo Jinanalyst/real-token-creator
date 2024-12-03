@@ -64,13 +64,36 @@ class App {
                 throw new Error('Please connect your wallet first');
             }
 
+            // Validate network
+            const currentNetwork = document.getElementById('networkSelect').value;
+            if (currentNetwork !== walletManager.network) {
+                throw new Error('Network mismatch. Please refresh the page and try again.');
+            }
+
             const formData = this.getTokenFormData();
+            
+            // Additional validation
+            if (!this.validateTokenFormData(formData)) {
+                return;
+            }
+
+            // Show processing message
+            uiState.addNotification({
+                type: 'info',
+                message: 'Creating token... This may take a few moments.',
+                duration: 0 // Don't auto-dismiss
+            });
+
             const result = await tokenCreator.createToken(formData);
 
+            // Clear previous notification
+            uiState.clearNotifications();
+
+            // Show success message
             uiState.addNotification({
                 type: 'success',
-                message: `Token created successfully! Mint address: ${result.mintAddress}`,
-                duration: 5000
+                message: `Token created successfully!\nMint address: ${result.mint}\nToken Account: ${result.tokenAccount}`,
+                duration: 10000
             });
 
             // Clear form
@@ -81,7 +104,8 @@ class App {
             await this.refreshTokenList();
 
         } catch (error) {
-            uiState.setError(error);
+            console.error('Token creation failed:', error);
+            uiState.setError(`Token creation failed: ${error.message}`);
         } finally {
             uiState.setLoading(false);
         }
@@ -103,22 +127,31 @@ class App {
         uiState.setLoading(true);
 
         try {
-            await walletManager.initialize(network);
-            uiState.setNetwork(network);
+            // Update UI immediately
+            document.getElementById('networkStatus').textContent = `Switching to ${network}...`;
             
-            if (walletManager.wallet) {
-                await walletManager.wallet.disconnect();
-                await this.connectWallet(walletManager.wallet.name);
-            }
-
+            // Initialize wallet with new network
+            await walletManager.initialize(network);
+            
+            // Update UI with success
+            document.getElementById('networkStatus').textContent = `Connected to ${network}`;
+            
+            // Refresh token list for new network
+            await this.refreshTokenList();
+            
             uiState.addNotification({
                 type: 'success',
-                message: `Switched to ${network}`,
+                message: `Successfully switched to ${network}`,
                 duration: 3000
             });
-
         } catch (error) {
+            console.error('Network change failed:', error);
             uiState.setError(`Failed to switch network: ${error.message}`);
+            
+            // Revert network select to previous value
+            const previousNetwork = walletManager.network;
+            event.target.value = previousNetwork;
+            document.getElementById('networkStatus').textContent = `Connected to ${previousNetwork}`;
         } finally {
             uiState.setLoading(false);
         }
@@ -200,6 +233,32 @@ class App {
         document.getElementById('additionalFees').textContent = 
             `${(totalFee - fees.BASE_TOKEN_CREATION).toFixed(3)} SOL`;
         document.getElementById('totalFee').textContent = `${totalFee.toFixed(3)} SOL`;
+    }
+
+    validateTokenFormData(formData) {
+        const { tokenName, tokenSymbol, totalSupply, decimals } = formData;
+
+        if (!tokenName || tokenName.length < 2 || tokenName.length > 32) {
+            uiState.setError('Token name must be between 2 and 32 characters');
+            return false;
+        }
+
+        if (!tokenSymbol || tokenSymbol.length < 2 || tokenSymbol.length > 10) {
+            uiState.setError('Token symbol must be between 2 and 10 characters');
+            return false;
+        }
+
+        if (!totalSupply || totalSupply <= 0) {
+            uiState.setError('Total supply must be greater than 0');
+            return false;
+        }
+
+        if (decimals < 0 || decimals > 9) {
+            uiState.setError('Decimals must be between 0 and 9');
+            return false;
+        }
+
+        return true;
     }
 }
 

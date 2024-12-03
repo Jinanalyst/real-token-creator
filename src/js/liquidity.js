@@ -1,197 +1,179 @@
-class LiquidityPoolManager {
+import { 
+    Connection, 
+    PublicKey, 
+    Transaction, 
+    SystemProgram,
+    LAMPORTS_PER_SOL
+} from '@solana/web3.js';
+
+import {
+    Token,
+    TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
+} from '@solana/spl-token';
+
+class LiquidityManager {
     constructor(walletManager) {
         this.walletManager = walletManager;
     }
 
-    async createPool(baseToken, quoteToken, liquidityAmount, feeTier) {
+    async createLiquidityPool(poolData) {
         try {
-            if (!this.walletManager.isConnected()) {
+            if (!this.walletManager.isConnected) {
                 throw new Error('Wallet not connected');
             }
 
-            // Validate inputs
-            if (!baseToken || !quoteToken || !liquidityAmount || !feeTier) {
-                throw new Error('Missing required parameters');
-            }
+            const {
+                tokenAAddress,
+                tokenBAddress,
+                tokenAAmount,
+                tokenBAmount
+            } = poolData;
 
-            // Convert fee tier to basis points
-            const feeBasisPoints = parseFloat(feeTier) * 100;
+            // Validate token addresses
+            const tokenA = new PublicKey(tokenAAddress);
+            const tokenB = new PublicKey(tokenBAddress);
 
-            // Create pool configuration
-            const poolConfig = {
-                baseToken: new solanaWeb3.PublicKey(baseToken),
-                quoteToken: new solanaWeb3.PublicKey(quoteToken),
-                feeTier: feeBasisPoints,
-                liquidityAmount: liquidityAmount,
-                tickSpacing: this._getTickSpacing(feeBasisPoints)
-            };
-
-            // Get token accounts
-            const baseTokenAccount = await this._getOrCreateTokenAccount(poolConfig.baseToken);
-            const quoteTokenAccount = await this._getOrCreateTokenAccount(poolConfig.quoteToken);
-
-            // Create pool transaction
-            const transaction = await this._createPoolTransaction(
-                poolConfig,
-                baseTokenAccount,
-                quoteTokenAccount
+            // Get associated token accounts for both tokens
+            const tokenAAccount = await Token.getAssociatedTokenAddress(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                tokenA,
+                this.walletManager.publicKey,
+                false
             );
 
-            // Sign and send transaction
-            const signature = await this.walletManager.signAndSendTransaction(transaction);
-            console.log('Pool created! Transaction signature:', signature);
-
-            return {
-                signature,
-                poolConfig
-            };
-
-        } catch (error) {
-            console.error('Failed to create liquidity pool:', error);
-            throw new Error(`Pool creation failed: ${error.message}`);
-        }
-    }
-
-    async _getOrCreateTokenAccount(mint) {
-        try {
-            const ata = await splToken.Token.getAssociatedTokenAddress(
-                splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-                splToken.TOKEN_PROGRAM_ID,
-                mint,
-                this.walletManager.wallet.publicKey
+            const tokenBAccount = await Token.getAssociatedTokenAddress(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                tokenB,
+                this.walletManager.publicKey,
+                false
             );
 
-            try {
-                await this.walletManager.connection.getTokenAccountBalance(ata);
-                return ata;
-            } catch {
-                // Token account doesn't exist, create it
-                const transaction = new solanaWeb3.Transaction().add(
-                    splToken.Token.createAssociatedTokenAccountInstruction(
-                        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-                        splToken.TOKEN_PROGRAM_ID,
-                        mint,
-                        ata,
-                        this.walletManager.wallet.publicKey,
-                        this.walletManager.wallet.publicKey
-                    )
-                );
+            // Create pool token mint
+            const poolTokenMint = PublicKey.findProgramAddress(
+                [Buffer.from('pool_token_mint')],
+                TOKEN_PROGRAM_ID
+            )[0];
 
-                await this.walletManager.signAndSendTransaction(transaction);
-                return ata;
-            }
-        } catch (error) {
-            throw new Error(`Failed to get/create token account: ${error.message}`);
-        }
-    }
-
-    async _createPoolTransaction(poolConfig, baseTokenAccount, quoteTokenAccount) {
-        try {
-            const userPublicKey = this.walletManager.wallet.publicKey;
-
-            // Create pool state account
-            const poolStateAccount = solanaWeb3.Keypair.generate();
-            const poolStateSpace = 1024; // Adjust based on actual requirements
-
-            // Create vault accounts for base and quote tokens
-            const baseVault = solanaWeb3.Keypair.generate();
-            const quoteVault = solanaWeb3.Keypair.generate();
-
-            // Calculate rent exemption
-            const rentExemption = await this.walletManager.connection.getMinimumBalanceForRentExemption(
-                poolStateSpace
+            const lamports = await this.walletManager.connection.getMinimumBalanceForRentExemption(
+                Token.MintLayout.span
             );
 
-            // Build transaction
-            const transaction = new solanaWeb3.Transaction();
+            // Create transaction for pool creation
+            const transaction = new Transaction();
 
-            // Create pool state account
+            // Create pool token mint account
             transaction.add(
-                solanaWeb3.SystemProgram.createAccount({
-                    fromPubkey: userPublicKey,
-                    newAccountPubkey: poolStateAccount.publicKey,
-                    lamports: rentExemption,
-                    space: poolStateSpace,
-                    programId: RAYDIUM_POOL_PROGRAM_ID
-                })
-            );
-
-            // Create vault accounts
-            transaction.add(
-                solanaWeb3.SystemProgram.createAccount({
-                    fromPubkey: userPublicKey,
-                    newAccountPubkey: baseVault.publicKey,
-                    lamports: await this.walletManager.connection.getMinimumBalanceForRentExemption(165),
-                    space: 165,
-                    programId: splToken.TOKEN_PROGRAM_ID
+                SystemProgram.createAccount({
+                    fromPubkey: this.walletManager.publicKey,
+                    newAccountPubkey: poolTokenMint,
+                    lamports,
+                    space: Token.MintLayout.span,
+                    programId: TOKEN_PROGRAM_ID
                 }),
-                solanaWeb3.SystemProgram.createAccount({
-                    fromPubkey: userPublicKey,
-                    newAccountPubkey: quoteVault.publicKey,
-                    lamports: await this.walletManager.connection.getMinimumBalanceForRentExemption(165),
-                    space: 165,
-                    programId: splToken.TOKEN_PROGRAM_ID
-                })
-            );
-
-            // Initialize pool
-            transaction.add(
-                this._createInitPoolInstruction(
-                    poolConfig,
-                    poolStateAccount.publicKey,
-                    baseVault.publicKey,
-                    quoteVault.publicKey,
-                    baseTokenAccount,
-                    quoteTokenAccount,
-                    userPublicKey
+                Token.createInitializeMintInstruction(
+                    poolTokenMint,
+                    9, // Pool tokens typically use 9 decimals
+                    this.walletManager.publicKey,
+                    this.walletManager.publicKey,
+                    TOKEN_PROGRAM_ID
                 )
             );
 
-            // Add necessary signers
-            transaction.sign(poolStateAccount, baseVault, quoteVault);
+            // Create pool token account
+            const poolTokenAccount = await Token.getAssociatedTokenAddress(
+                ASSOCIATED_TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                poolTokenMint,
+                this.walletManager.publicKey,
+                false
+            );
 
-            return transaction;
+            transaction.add(
+                Token.createAssociatedTokenAccountInstruction(
+                    this.walletManager.publicKey,
+                    poolTokenAccount,
+                    this.walletManager.publicKey,
+                    poolTokenMint,
+                    TOKEN_PROGRAM_ID,
+                    ASSOCIATED_TOKEN_PROGRAM_ID
+                )
+            );
+
+            // Transfer tokens to pool
+            const tokenADecimals = await this.getTokenDecimals(tokenA);
+            const tokenBDecimals = await this.getTokenDecimals(tokenB);
+
+            const tokenATransferAmount = BigInt(tokenAAmount * Math.pow(10, tokenADecimals));
+            const tokenBTransferAmount = BigInt(tokenBAmount * Math.pow(10, tokenBDecimals));
+
+            transaction.add(
+                Token.createTransferInstruction(
+                    tokenAAccount,
+                    poolTokenAccount,
+                    this.walletManager.publicKey,
+                    tokenATransferAmount,
+                    [],
+                    TOKEN_PROGRAM_ID
+                ),
+                Token.createTransferInstruction(
+                    tokenBAccount,
+                    poolTokenAccount,
+                    this.walletManager.publicKey,
+                    tokenBTransferAmount,
+                    [],
+                    TOKEN_PROGRAM_ID
+                )
+            );
+
+            // Get recent blockhash
+            const { blockhash } = await this.walletManager.connection.getLatestBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = this.walletManager.publicKey;
+
+            // Sign transaction
+            const signedTransaction = await this.walletManager.signTransaction(transaction);
+
+            // Send and confirm transaction
+            const signature = await this.walletManager.connection.sendRawTransaction(
+                signedTransaction.serialize()
+            );
+            await this.walletManager.connection.confirmTransaction(signature);
+
+            return {
+                poolAddress: poolTokenMint.toString(),
+                poolTokenAccount: poolTokenAccount.toString(),
+                signature
+            };
         } catch (error) {
-            throw new Error(`Failed to create pool transaction: ${error.message}`);
+            console.error('Error creating liquidity pool:', error);
+            throw error;
         }
     }
 
-    _getTickSpacing(feeBasisPoints) {
-        switch (feeBasisPoints) {
-            case 1: return 1;
-            case 10: return 2;
-            case 25: return 4;
-            case 100: return 8;
-            case 300: return 16;
-            case 1000: return 64;
-            default: return 8;
+    async getTokenDecimals(tokenMint) {
+        try {
+            const mintInfo = await this.walletManager.connection.getParsedAccountInfo(tokenMint);
+            return mintInfo.value.data.parsed.info.decimals;
+        } catch (error) {
+            console.error('Error getting token decimals:', error);
+            throw error;
         }
     }
 
-    _createInitPoolInstruction(
-        poolConfig,
-        poolStateAccount,
-        baseVault,
-        quoteVault,
-        baseTokenAccount,
-        quoteTokenAccount,
-        userPublicKey
-    ) {
-        // This is a placeholder. You'll need to implement the actual Raydium pool initialization
-        // instruction based on their SDK or program requirements
-        return new solanaWeb3.TransactionInstruction({
-            keys: [
-                { pubkey: poolStateAccount, isSigner: false, isWritable: true },
-                { pubkey: baseVault, isSigner: false, isWritable: true },
-                { pubkey: quoteVault, isSigner: false, isWritable: true },
-                { pubkey: baseTokenAccount, isSigner: false, isWritable: true },
-                { pubkey: quoteTokenAccount, isSigner: false, isWritable: true },
-                { pubkey: userPublicKey, isSigner: true, isWritable: false },
-                { pubkey: splToken.TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-                { pubkey: solanaWeb3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }
-            ],
-            programId: RAYDIUM_POOL_PROGRAM_ID,
-            data: Buffer.from([]) // Implement actual instruction data
-        });
+    async getPoolInfo(poolAddress) {
+        try {
+            const poolInfo = await this.walletManager.connection.getParsedAccountInfo(
+                new PublicKey(poolAddress)
+            );
+            return poolInfo.value.data.parsed.info;
+        } catch (error) {
+            console.error('Error getting pool info:', error);
+            throw error;
+        }
     }
 }
+
+export default LiquidityManager;

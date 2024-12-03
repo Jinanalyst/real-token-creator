@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Liquidity Pool - Solmint</title>
+    <title>Create Token - Solmint</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/@solana/spl_token@0.3.8/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@0.3.8/lib/index.iife.min.js"></script>
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
@@ -16,7 +16,7 @@
                 <div class="flex items-center space-x-6">
                     <a href="/" class="text-2xl font-bold text-indigo-600 hover:text-indigo-500">Solmint</a>
                     <a href="/" class="text-gray-700 hover:text-blue-600">Home</a>
-                    <a href="create-token.html" class="text-gray-700 hover:text-blue-600">Create Token</a>
+                    <a href="create-liquidity.html" class="text-gray-700 hover:text-blue-600">Create Liquidity</a>
                 </div>
                 <div class="flex items-center space-x-4">
                     <select id="networkSelect" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200">
@@ -36,36 +36,42 @@
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
         <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-6">Create Liquidity Pool</h1>
+            <h1 class="text-3xl font-bold text-gray-900 mb-6">Create New Token</h1>
             
-            <form id="liquidityForm" class="space-y-6">
+            <form id="tokenForm" class="space-y-6">
                 <div>
-                    <label for="tokenAAddress" class="block text-sm font-medium text-gray-700">Token A Address</label>
-                    <input type="text" id="tokenAAddress" name="tokenAAddress" required
+                    <label for="tokenName" class="block text-sm font-medium text-gray-700">Token Name</label>
+                    <input type="text" id="tokenName" name="tokenName" required
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
 
                 <div>
-                    <label for="tokenBAddress" class="block text-sm font-medium text-gray-700">Token B Address</label>
-                    <input type="text" id="tokenBAddress" name="tokenBAddress" required
+                    <label for="tokenSymbol" class="block text-sm font-medium text-gray-700">Token Symbol</label>
+                    <input type="text" id="tokenSymbol" name="tokenSymbol" required
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
 
                 <div>
-                    <label for="tokenAAmount" class="block text-sm font-medium text-gray-700">Token A Amount</label>
-                    <input type="number" id="tokenAAmount" name="tokenAAmount" min="0" required
+                    <label for="decimals" class="block text-sm font-medium text-gray-700">Decimals</label>
+                    <input type="number" id="decimals" name="decimals" min="0" max="9" value="9" required
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
 
                 <div>
-                    <label for="tokenBAmount" class="block text-sm font-medium text-gray-700">Token B Amount</label>
-                    <input type="number" id="tokenBAmount" name="tokenBAmount" min="0" required
+                    <label for="initialSupply" class="block text-sm font-medium text-gray-700">Initial Supply</label>
+                    <input type="number" id="initialSupply" name="initialSupply" min="0" required
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
 
-                <button type="submit" id="createPoolBtn"
+                <div class="flex items-center">
+                    <input type="checkbox" id="freezeAuthority" name="freezeAuthority"
+                           class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                    <label for="freezeAuthority" class="ml-2 block text-sm text-gray-700">Enable Freeze Authority</label>
+                </div>
+
+                <button type="submit" id="createTokenBtn"
                         class="w-full bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Create Pool
+                    Create Token
                 </button>
             </form>
         </div>
@@ -76,23 +82,23 @@
 
     <script type="module">
         import walletManager from './src/js/wallet.js';
-        import LiquidityManager from './src/js/liquidity.js';
+        import TokenCreator from './src/js/token.js';
 
-        let liquidityManager = null;
+        let tokenCreator = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const connectWalletBtn = document.getElementById('connectWalletBtn');
                 const networkSelect = document.getElementById('networkSelect');
-                const createPoolBtn = document.getElementById('createPoolBtn');
-                const liquidityForm = document.getElementById('liquidityForm');
+                const createTokenBtn = document.getElementById('createTokenBtn');
+                const tokenForm = document.getElementById('tokenForm');
 
                 // Initialize wallet manager
                 await walletManager.initialize(networkSelect.value);
                 console.log('Wallet manager initialized');
 
-                // Initialize liquidity manager
-                liquidityManager = new LiquidityManager(walletManager);
+                // Initialize token creator
+                tokenCreator = new TokenCreator(walletManager);
 
                 // Handle wallet connection
                 connectWalletBtn.addEventListener('click', async () => {
@@ -103,7 +109,7 @@
                     try {
                         await walletManager.connect();
                         connectWalletBtn.textContent = `Connected (${walletManager.publicKey.toString().slice(0, 4)}...${walletManager.publicKey.toString().slice(-4)})`;
-                        createPoolBtn.disabled = false;
+                        createTokenBtn.disabled = false;
                     } catch (error) {
                         console.error('Failed to connect wallet:', error);
                         showNotification('error', `Failed to connect wallet: ${error.message}`);
@@ -121,8 +127,8 @@
                     }
                 });
 
-                // Handle liquidity pool creation
-                liquidityForm.addEventListener('submit', async (e) => {
+                // Handle token creation
+                tokenForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     
                     if (!walletManager.isConnected) {
@@ -130,37 +136,38 @@
                         return;
                     }
 
-                    const poolData = {
-                        tokenAAddress: document.getElementById('tokenAAddress').value,
-                        tokenBAddress: document.getElementById('tokenBAddress').value,
-                        tokenAAmount: parseFloat(document.getElementById('tokenAAmount').value),
-                        tokenBAmount: parseFloat(document.getElementById('tokenBAmount').value)
+                    const tokenData = {
+                        name: document.getElementById('tokenName').value,
+                        symbol: document.getElementById('tokenSymbol').value,
+                        decimals: parseInt(document.getElementById('decimals').value),
+                        initialSupply: parseFloat(document.getElementById('initialSupply').value),
+                        freezeAuthority: document.getElementById('freezeAuthority').checked
                     };
 
-                    createPoolBtn.disabled = true;
-                    createPoolBtn.textContent = 'Creating Pool...';
+                    createTokenBtn.disabled = true;
+                    createTokenBtn.textContent = 'Creating Token...';
 
                     try {
-                        const result = await liquidityManager.createLiquidityPool(poolData);
-                        showNotification('success', `Liquidity pool created successfully! Pool address: ${result.poolAddress}`);
+                        const result = await tokenCreator.createToken(tokenData);
+                        showNotification('success', `Token created successfully! Mint address: ${result.mintAddress}`);
                         
                         // Reset form
-                        liquidityForm.reset();
+                        tokenForm.reset();
                     } catch (error) {
-                        console.error('Failed to create liquidity pool:', error);
-                        showNotification('error', `Failed to create liquidity pool: ${error.message}`);
+                        console.error('Failed to create token:', error);
+                        showNotification('error', `Failed to create token: ${error.message}`);
                     } finally {
-                        createPoolBtn.disabled = false;
-                        createPoolBtn.textContent = 'Create Pool';
+                        createTokenBtn.disabled = false;
+                        createTokenBtn.textContent = 'Create Token';
                     }
                 });
 
                 // Update button state based on wallet connection
                 if (walletManager.publicKey) {
                     connectWalletBtn.textContent = `Connected (${walletManager.publicKey.toString().slice(0, 4)}...${walletManager.publicKey.toString().slice(-4)})`;
-                    createPoolBtn.disabled = false;
+                    createTokenBtn.disabled = false;
                 } else {
-                    createPoolBtn.disabled = true;
+                    createTokenBtn.disabled = true;
                 }
 
             } catch (error) {

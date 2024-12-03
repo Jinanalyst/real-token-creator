@@ -1,61 +1,79 @@
 class UIStateManager {
     constructor() {
         this.state = {
-            isWalletConnected: false,
-            currentNetwork: 'devnet',
             loading: false,
             error: null,
-            notifications: [],
-            currentTransaction: null,
-            tokenList: [],
-            poolList: []
+            network: 'devnet',
+            walletConnected: false,
+            notifications: []
         };
-        
-        this.listeners = new Set();
+        this.subscribers = [];
+        this.notificationTimeout = null;
     }
 
-    subscribe(listener) {
-        this.listeners.add(listener);
-        return () => this.listeners.delete(listener);
+    subscribe(callback) {
+        this.subscribers.push(callback);
+        callback(this.state);
     }
 
     setState(newState) {
         this.state = { ...this.state, ...newState };
-        this._notifyListeners();
+        this.notifySubscribers();
     }
 
     setLoading(loading) {
         this.setState({ loading });
+        this.updateLoadingUI(loading);
     }
 
     setError(error) {
-        this.setState({ 
-            error: error ? error.message || error : null,
-            loading: false 
-        });
         if (error) {
+            console.error('UI Error:', error);
+            const errorMessage = error instanceof Error ? error.message : error;
             this.addNotification({
                 type: 'error',
-                message: error.message || error,
+                message: errorMessage,
                 duration: 5000
             });
         }
+        this.setState({ error: error || null });
     }
 
-    clearError() {
-        this.setState({ error: null });
+    setNetwork(network) {
+        this.setState({ network });
+        this.updateNetworkUI(network);
+    }
+
+    setWalletConnection(connected) {
+        this.setState({ walletConnected: connected });
+        this.updateWalletUI(connected);
     }
 
     addNotification(notification) {
         const id = Date.now();
-        const newNotification = { ...notification, id };
+        const newNotification = {
+            id,
+            ...notification,
+            timestamp: new Date()
+        };
+
+        // Clear existing notifications of the same type
+        const filteredNotifications = this.state.notifications.filter(n => n.type !== notification.type);
+        
         this.setState({
-            notifications: [...this.state.notifications, newNotification]
+            notifications: [...filteredNotifications, newNotification]
         });
 
-        if (notification.duration) {
-            setTimeout(() => this.removeNotification(id), notification.duration);
+        this.showNotification(newNotification);
+
+        // Auto-dismiss if duration is set
+        if (notification.duration > 0) {
+            setTimeout(() => {
+                this.removeNotification(id);
+            }, notification.duration);
         }
+
+        return id;
     }
 
     removeNotification(id) {
@@ -64,89 +82,101 @@ class UIStateManager {
         });
     }
 
-    setCurrentTransaction(transaction) {
-        this.setState({ currentTransaction: transaction });
-    }
-
-    updateTokenList(tokens) {
-        this.setState({ tokenList: tokens });
-    }
-
-    updatePoolList(pools) {
-        this.setState({ poolList: pools });
-    }
-
-    setWalletConnection(isConnected) {
-        this.setState({ isWalletConnected: isConnected });
-    }
-
-    setNetwork(network) {
-        this.setState({ currentNetwork: network });
-    }
-
-    _notifyListeners() {
-        this.listeners.forEach(listener => listener(this.state));
-    }
-
-    // UI Helper Methods
-    showLoadingSpinner() {
-        const spinner = document.getElementById('loading-spinner');
-        if (spinner) {
-            spinner.classList.remove('hidden');
+    clearNotifications() {
+        this.setState({ notifications: [] });
+        const notificationContainer = document.getElementById('notificationContainer');
+        if (notificationContainer) {
+            notificationContainer.innerHTML = '';
         }
     }
 
-    hideLoadingSpinner() {
-        const spinner = document.getElementById('loading-spinner');
-        if (spinner) {
-            spinner.classList.add('hidden');
+    showNotification(notification) {
+        const container = this.getOrCreateNotificationContainer();
+        const notificationElement = this.createNotificationElement(notification);
+        
+        // Remove existing notification of same type if exists
+        const existingNotification = container.querySelector(`[data-type="${notification.type}"]`);
+        if (existingNotification) {
+            container.removeChild(existingNotification);
+        }
+        
+        container.appendChild(notificationElement);
+    }
+
+    createNotificationElement(notification) {
+        const element = document.createElement('div');
+        element.className = `notification notification-${notification.type}`;
+        element.setAttribute('data-type', notification.type);
+        element.setAttribute('data-id', notification.id);
+        
+        const message = document.createElement('span');
+        message.textContent = notification.message;
+        element.appendChild(message);
+        
+        if (notification.duration > 0) {
+            const closeButton = document.createElement('button');
+            closeButton.className = 'notification-close';
+            closeButton.textContent = '×';
+            closeButton.onclick = () => this.removeNotification(notification.id);
+            element.appendChild(closeButton);
+        }
+        
+        return element;
+    }
+
+    getOrCreateNotificationContainer() {
+        let container = document.getElementById('notificationContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notificationContainer';
+            document.body.appendChild(container);
+        }
+        return container;
+    }
+
+    updateLoadingUI(loading) {
+        const loadingElement = document.getElementById('loadingIndicator');
+        const overlay = document.getElementById('loadingOverlay');
+        
+        if (loadingElement) {
+            loadingElement.style.display = loading ? 'block' : 'none';
+        }
+        
+        if (overlay) {
+            overlay.style.display = loading ? 'block' : 'none';
         }
     }
 
-    updateUIElements(state) {
-        // Update wallet connection status
-        const walletButton = document.getElementById('connectWalletButton');
-        if (walletButton) {
-            walletButton.textContent = state.isWalletConnected ? 
-                'Wallet Connected' : 'Connect Wallet';
-            walletButton.classList.toggle('bg-green-500', state.isWalletConnected);
-        }
-
-        // Update network selector
+    updateNetworkUI(network) {
+        const networkStatus = document.getElementById('networkStatus');
         const networkSelect = document.getElementById('networkSelect');
+        
+        if (networkStatus) {
+            networkStatus.textContent = `Connected to ${network}`;
+            networkStatus.className = `network-status network-${network}`;
+        }
+        
         if (networkSelect) {
-            networkSelect.value = state.currentNetwork;
+            networkSelect.value = network;
         }
-
-        // Update loading state
-        if (state.loading) {
-            this.showLoadingSpinner();
-        } else {
-            this.hideLoadingSpinner();
-        }
-
-        // Update error display
-        const errorContainer = document.getElementById('error-container');
-        if (errorContainer) {
-            errorContainer.textContent = state.error || '';
-            errorContainer.classList.toggle('hidden', !state.error);
-        }
-
-        // Update notifications
-        this._updateNotifications(state.notifications);
     }
 
-    _updateNotifications(notifications) {
-        const container = document.getElementById('notification-container');
-        if (!container) return;
+    updateWalletUI(connected) {
+        const connectButton = document.getElementById('connectWalletButton');
+        const walletStatus = document.getElementById('walletStatus');
+        
+        if (connectButton) {
+            connectButton.textContent = connected ? 'Disconnect Wallet' : 'Connect Wallet';
+        }
+        
+        if (walletStatus) {
+            walletStatus.textContent = connected ? 'Wallet Connected' : 'Wallet Disconnected';
+            walletStatus.className = `wallet-status ${connected ? 'connected' : 'disconnected'}`;
+        }
+    }
 
-        container.innerHTML = '';
-        notifications.forEach(notification => {
-            const element = document.createElement('div');
-            element.className = `notification ${notification.type} p-4 rounded-lg mb-2`;
-            element.textContent = notification.message;
-            container.appendChild(element);
-        });
+    notifySubscribers() {
+        this.subscribers.forEach(callback => callback(this.state));
     }
 }
 

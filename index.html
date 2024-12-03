@@ -1,415 +1,228 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Create Token | SolMint</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.73.0/lib/index.iife.min.js"></script>
-    <script src="src/js/wallet.js"></script>
-    <script src="src/js/token.js"></script>
+    <title>Solmint - Token Creation Simplified</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl_token@0.3.8/lib/index.iife.min.js"></script>
+    <script>
+        // Add error handling for script loading
+        window.addEventListener('error', function(e) {
+            console.error('Script loading error:', e);
+            if (e.target && e.target.src) {
+                console.error('Failed to load:', e.target.src);
+            }
+        }, true);
+    </script>
 </head>
-<body class="bg-gray-50 font-sans">
-
-<!-- Header -->
-<header class="bg-blue-600 text-white p-6">
-    <div class="flex justify-center items-center flex-col">
-        <h1 class="text-3xl font-bold">SolMint</h1>
-        <nav class="mt-4 flex justify-center space-x-8">
-            <a href="index.html" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
-                Create Token
-            </a>
-            <a href="create-liquidity.html" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
-                Create Liquidity Pool
-            </a>
-            <button id="connectWalletButton" onclick="showWalletModal()" 
-                class="bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                Connect Wallet
-            </button>
-            <select id="networkSelect" onchange="updateNetwork()" class="bg-white text-blue-600 border rounded-md py-2 px-4 hover:border-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 transition duration-300">
-                <option value="devnet">Devnet</option>
-                <option value="testnet">Testnet</option>
-                <option value="mainnet">Mainnet</option>
-            </select>
-        </nav>
-    </div>
-</header>
-
-<!-- Wallet Selector Modal -->
-<div id="walletModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-        <h3 class="text-xl font-bold mb-4">Select Wallet</h3>
-        <div class="space-y-4">
-            <button onclick="connectSpecificWallet('phantom')" 
-                    class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2">
-                <img src="https://phantom.app/img/phantom-logo.svg" class="w-6 h-6" alt="Phantom">
-                <span>Phantom</span>
-            </button>
-            <button onclick="connectSpecificWallet('solflare')" 
-                    class="w-full bg-orange-600 text-white py-3 px-4 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2">
-                <img src="https://solflare.com/assets/logo.svg" class="w-6 h-6" alt="Solflare">
-                <span>Solflare</span>
-            </button>
+<body class="bg-gray-50 font-sans leading-normal tracking-normal">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-6">
+                    <a href="/" class="text-2xl font-bold text-indigo-600 hover:text-indigo-500">Solmint</a>
+                    <a href="create-token.html" class="text-gray-700 hover:text-blue-600">Create Token</a>
+                    <a href="create-liquidity.html" class="text-gray-700 hover:text-blue-600">Create Liquidity</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select id="networkSelect" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200">
+                        <option value="devnet" selected>Devnet</option>
+                        <option value="mainnet">Mainnet</option>
+                        <option value="testnet">Testnet</option>
+                    </select>
+                    <button id="connectWalletBtn" type="button"
+                            class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200">
+                        Connect Wallet
+                    </button>
+                </div>
+            </div>
         </div>
-        <button onclick="closeWalletModal()" 
-                class="mt-4 w-full py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-            Cancel
-        </button>
-    </div>
-</div>
+    </nav>
 
-<!-- Main Content -->
-<main class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-    <section class="bg-white p-6 rounded-lg shadow-lg">
-        <h2 class="text-2xl font-bold mb-6">Create Your Token</h2>
-        <form id="createTokenForm" onsubmit="event.preventDefault(); createToken();" class="hidden">
-            <label for="tokenName" class="block text-sm font-medium">Token Name</label>
-            <input type="text" id="tokenName" class="w-full p-3 border rounded-md mb-4" required>
-            
-            <label for="tokenSymbol" class="block text-sm font-medium">Token Symbol</label>
-            <input type="text" id="tokenSymbol" class="w-full p-3 border rounded-md mb-4" required>
-            
-            <label for="totalSupply" class="block text-sm font-medium">Total Supply</label>
-            <input type="number" id="totalSupply" class="w-full p-3 border rounded-md mb-4" required>
-            
-            <div class="mb-6 p-4 bg-gray-50 rounded-lg">
-                <h3 class="text-lg font-semibold mb-2">Fee Preview</h3>
-                <div id="feeBreakdown" class="text-sm">
-                    <div class="flex justify-between mb-1">
-                        <span>Base Token Creation:</span>
-                        <span>0.01 SOL</span>
-                    </div>
-                    <div id="revokeMintFee" class="flex justify-between mb-1 text-gray-400">
-                        <span>Revoke Mint Authority:</span>
-                        <span>0.005 SOL</span>
-                    </div>
-                    <div id="freezeFee" class="flex justify-between mb-1 text-gray-400">
-                        <span>Freeze Authority:</span>
-                        <span>0.005 SOL</span>
-                    </div>
-                    <div id="decimalsFee" class="flex justify-between mb-1 text-gray-400">
-                        <span>Custom Decimals:</span>
-                        <span>0.005 SOL</span>
-                    </div>
-                    <div id="metadataFee" class="flex justify-between mb-1 text-gray-400">
-                        <span>Metadata:</span>
-                        <span>0.01 SOL</span>
-                    </div>
-                    <div class="border-t border-gray-300 mt-2 pt-2 flex justify-between font-semibold">
-                        <span>Total Fee:</span>
-                        <span id="totalFee">0.01 SOL</span>
-                    </div>
-                </div>
+    <!-- Header Section -->
+    <header class="bg-blue-600 text-white py-12">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-4xl font-bold mb-4">Welcome to Solmint</h1>
+            <p class="text-xl">Your Gateway to Token Creation on Solana</p>
+        </div>
+    </header>
+
+    <!-- Services Section -->
+    <main class="container mx-auto px-4 py-12">
+        <section class="text-center mb-12">
+            <h2 class="text-3xl font-semibold text-gray-800">Our Services</h2>
+            <p class="text-gray-600 mt-2">Explore how Solmint can help you create and manage your tokens with ease.</p>
+        </section>
+
+        <!-- Services Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <!-- Service 1 -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                <h3 class="text-xl font-bold text-blue-600">Token Creation Made Simple</h3>
+                <p class="text-gray-700 mt-2">Create your custom token effortlessly. No coding knowledge required!</p>
+                <a href="create-token.html" class="mt-4 inline-block text-blue-600 hover:text-blue-800">Get Started →</a>
             </div>
 
-            <div class="space-y-4 mb-6">
-                <div class="flex items-center group relative">
-                    <input type="checkbox" id="revokeMint" class="mr-2" onchange="updateFeePreview()">
-                    <label for="revokeMint" class="text-sm font-medium">Revoke Mint Authority</label>
-                    <div class="hidden group-hover:block absolute left-full ml-2 bg-gray-800 text-white p-2 rounded text-xs w-48">
-                        Permanently revoke the ability to mint more tokens after creation
-                    </div>
-                </div>
-
-                <div class="flex items-center group relative">
-                    <input type="checkbox" id="freezeAuthority" class="mr-2" onchange="updateFeePreview()">
-                    <label for="freezeAuthority" class="text-sm font-medium">Freeze Authority</label>
-                    <div class="hidden group-hover:block absolute left-full ml-2 bg-gray-800 text-white p-2 rounded text-xs w-48">
-                        Enable the ability to freeze token accounts
-                    </div>
-                </div>
-
-                <div class="flex items-center group relative">
-                    <input type="checkbox" id="customDecimals" class="mr-2" onchange="updateFeePreview()">
-                    <label for="customDecimals" class="text-sm font-medium">Custom Decimals</label>
-                    <div class="hidden group-hover:block absolute left-full ml-2 bg-gray-800 text-white p-2 rounded text-xs w-48">
-                        Set custom decimal places for your token
-                    </div>
-                </div>
-
-                <div class="flex items-center group relative">
-                    <input type="checkbox" id="metadata" class="mr-2" onchange="updateFeePreview()">
-                    <label for="metadata" class="text-sm font-medium">Add Metadata</label>
-                    <div class="hidden group-hover:block absolute left-full ml-2 bg-gray-800 text-white p-2 rounded text-xs w-48">
-                        Add on-chain metadata to your token (image, description, etc.)
-                    </div>
-                </div>
+            <!-- Service 2 -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                <h3 class="text-xl font-bold text-blue-600">Liquidity Pool Creation</h3>
+                <p class="text-gray-700 mt-2">Create and manage liquidity pools for your tokens with ease.</p>
+                <a href="create-liquidity.html" class="mt-4 inline-block text-blue-600 hover:text-blue-800">Learn More →</a>
             </div>
-            
-            <button id="createTokenButton" class="bg-blue-600 text-white py-3 rounded-md">
-                Create Token
-            </button>
-        </form>
-        <div id="walletRequiredMessage" class="text-lg text-gray-700">
-            Please connect your wallet to create a token.
+
+            <!-- Service 3 -->
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                <h3 class="text-xl font-bold text-blue-600">Multi-Wallet Support</h3>
+                <p class="text-gray-700 mt-2">Connect your favorite Solana wallet for seamless transactions.</p>
+            </div>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-bold text-blue-600">Secure and Decentralized</h3>
+                <p class="text-gray-700 mt-2">Leverage Solana's blockchain for secure, fast, and scalable token solutions.</p>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-bold text-blue-600">Expert Support</h3>
+                <p class="text-gray-700 mt-2">Get guidance from blockchain experts throughout your journey.</p>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-xl font-bold text-blue-600">Community Building</h3>
+                <p class="text-gray-700 mt-2">Engage your community with airdrops, staking rewards, and more.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Call to Action -->
+    <section class="bg-blue-600 text-white py-12">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold mb-4">Get Started Today</h2>
+            <p class="text-xl mb-8">Ready to launch your token project? Start creating on Solmint now!</p>
+            <div class="space-x-4">
+                <a href="create-token.html" class="inline-block bg-white text-blue-600 font-bold py-3 px-8 rounded-full shadow-md hover:bg-gray-100">
+                    Create Token
+                </a>
+                <a href="create-liquidity.html" class="inline-block bg-transparent text-white font-bold py-3 px-8 rounded-full border-2 border-white hover:bg-white hover:text-blue-600">
+                    Create Liquidity Pool
+                </a>
+            </div>
         </div>
     </section>
-    <!-- Token Creation Description Section -->
-<section class="bg-white p-6 rounded-lg shadow-lg">
-    <h2 class="text-2xl font-bold mb-6">What is a Token?</h2>
-    <p class="text-sm text-gray-700 mb-4">
-        A token is a digital asset that represents ownership, value, or access to a specific service or product. In the context of SolanaMint, you can create custom tokens for various purposes like decentralized finance (DeFi), gaming, or as part of a tokenized ecosystem.
-    </p>
-    <h3 class="text-lg font-semibold mb-2">Key Features of Your Token</h3>
-    <ul class="list-disc pl-5 text-sm text-gray-700">
-        <li>Customizable token name and symbol</li>
-        <li>Ability to set total supply and control token minting</li>
-        <li>Manage permissions like freeze and revoke minting authority</li>
-    </ul>
-    <h3 class="text-lg font-semibold mb-2 mt-4">Why Create a Token?</h3>
-    <p class="text-sm text-gray-700">
-        Tokens are the backbone of blockchain projects, enabling the creation of decentralized ecosystems, rewards systems, and incentivized networks. By creating your own token, you can engage with new possibilities in blockchain technology.
-    </p>
-</section>
-</main>
 
-<!-- Footer -->
-<footer class="bg-blue-600 text-white p-6 text-center mt-auto">
-    <div class="container mx-auto">
-        <p>&copy; 2024 SolMint | <a href="https://t.me/jinwoo5385" class="text-blue-300">Contact us</a></p>
-    </div>
-</footer>
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-sm">&copy; 2024 Solmint. All rights reserved.</p>
+        </div>
+    </footer>
 
-<script>
-    // Initialize wallet manager and connection
-    async function initializeConnection(network) {
-        try {
-            await window.walletManager.initialize(network);
-            console.log('Connection initialized successfully');
-        } catch (error) {
-            console.error('Failed to initialize connection:', error);
-        }
-    }
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="fixed top-4 right-4 z-50"></div>
 
-    async function autoConnectWallet(walletName) {
-        try {
-            await connectSpecificWallet(walletName, true);
-        } catch (error) {
-            console.error('Auto-connect failed:', error);
-        }
-    }
+    <script type="module">
+        import walletManager from './src/js/wallet.js';
 
-    function showWalletModal() {
-        document.getElementById('walletModal').classList.remove('hidden');
-    }
+        // Initialize app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const connectWalletBtn = document.getElementById('connectWalletBtn');
+                const networkSelect = document.getElementById('networkSelect');
 
-    function closeWalletModal() {
-        document.getElementById('walletModal').classList.add('hidden');
-    }
+                // Initialize wallet manager with selected network
+                await walletManager.initialize(networkSelect.value);
+                console.log('Wallet manager initialized');
 
-    async function connectSpecificWallet(walletName, isAutoConnect = false) {
-        try {
-            const wallet = await window.walletManager.connectWallet(walletName);
-            
-            if (wallet) {
-                const publicKey = wallet.publicKey.toString();
-                document.getElementById('connectWalletButton').textContent = 
-                    publicKey.slice(0, 4) + '...' + publicKey.slice(-4);
-                
-                if (!isAutoConnect) {
-                    closeWalletModal();
+                // Handle wallet connection
+                connectWalletBtn.addEventListener('click', async () => {
+                    if (!window.solana) {
+                        showNotification('error', 'Please install Phantom wallet');
+                        window.open('https://phantom.app/', '_blank');
+                        return;
+                    }
+
+                    try {
+                        connectWalletBtn.disabled = true;
+                        connectWalletBtn.textContent = 'Connecting...';
+                        
+                        await walletManager.connectWallet();
+                        const publicKey = walletManager.publicKey;
+                        
+                        if (publicKey) {
+                            connectWalletBtn.textContent = `Connected (${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)})`;
+                            showNotification('success', 'Wallet connected successfully!');
+                        }
+                    } catch (error) {
+                        console.error('Failed to connect wallet:', error);
+                        showNotification('error', `Failed to connect wallet: ${error.message}`);
+                        connectWalletBtn.textContent = 'Connect Wallet';
+                    } finally {
+                        connectWalletBtn.disabled = false;
+                    }
+                });
+
+                // Handle wallet changes
+                walletManager.onWalletChange((wallet) => {
+                    if (wallet && wallet.publicKey) {
+                        const publicKey = wallet.publicKey.toString();
+                        connectWalletBtn.textContent = `Connected (${publicKey.slice(0, 4)}...${publicKey.slice(-4)})`;
+                    } else {
+                        connectWalletBtn.textContent = 'Connect Wallet';
+                    }
+                    connectWalletBtn.disabled = false;
+                });
+
+                // Handle network changes
+                networkSelect.addEventListener('change', async (event) => {
+                    try {
+                        await walletManager.initialize(event.target.value);
+                        showNotification('success', `Switched to ${event.target.value}`);
+                    } catch (error) {
+                        console.error('Failed to switch network:', error);
+                        showNotification('error', `Failed to switch network: ${error.message}`);
+                        networkSelect.value = walletManager.network;
+                    }
+                });
+
+                // Check if wallet is already connected
+                if (walletManager.publicKey) {
+                    connectWalletBtn.textContent = `Connected (${walletManager.publicKey.toString().slice(0, 4)}...${walletManager.publicKey.toString().slice(-4)})`;
                 }
-                
-                // Update UI state
-                document.getElementById('createTokenForm').classList.remove('hidden');
-                document.getElementById('walletRequiredMessage').classList.add('hidden');
+
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+                showNotification('error', `Initialization failed: ${error.message}`);
             }
-        } catch (error) {
-            console.error('Failed to connect wallet:', error);
-            alert('Failed to connect wallet: ' + error.message);
+        });
+
+        // Notification function
+        function showNotification(type, message) {
+            const notification = document.createElement('div');
+            notification.className = `p-4 rounded-lg shadow-lg ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } text-white max-w-md mb-4 transition-opacity duration-500`;
+            notification.textContent = message;
+
+            const container = document.getElementById('notificationContainer');
+            container.appendChild(notification);
+            
+            // Fade out and remove after delay
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
         }
-    }
 
-    async function disconnectWallet() {
-        try {
-            await window.walletManager.disconnect();
-            document.getElementById('connectWalletButton').textContent = 'Connect Wallet';
-            document.getElementById('createTokenForm').classList.add('hidden');
-            document.getElementById('walletRequiredMessage').classList.remove('hidden');
-        } catch (error) {
-            console.error('Failed to disconnect:', error);
-            alert('Failed to disconnect wallet: ' + error.message);
-        }
-    }
-
-    async function updateNetwork() {
-        const networkSelect = document.getElementById('networkSelect');
-        const newNetwork = networkSelect.value;
-        const oldNetwork = localStorage.getItem('selectedNetwork') || 'devnet';
-        
-        // Disable UI during network switch
-        networkSelect.disabled = true;
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg z-50';
-        loadingIndicator.textContent = 'Switching network...';
-        document.body.appendChild(loadingIndicator);
-        
-        try {
-            // Initialize new network connection
-            await window.walletManager.initialize(newNetwork);
-            
-            // If wallet is connected, try to switch its network
-            if (window.walletManager.wallet) {
-                try {
-                    await window.walletManager.switchNetwork(newNetwork);
-                    console.log(`Successfully switched to ${newNetwork}`);
-                } catch (error) {
-                    console.error('Failed to switch wallet network:', error);
-                    // Show manual switch instruction
-                    const manualSwitchMsg = document.createElement('div');
-                    manualSwitchMsg.className = 'fixed top-4 right-4 bg-yellow-500 text-white px-4 py-2 rounded-lg z-50';
-                    manualSwitchMsg.textContent = `Please switch your wallet to ${newNetwork} manually`;
-                    document.body.appendChild(manualSwitchMsg);
-                    setTimeout(() => manualSwitchMsg.remove(), 5000);
-                    throw error;
-                }
-            }
-            
-            // Save network preference only after successful switch
-            localStorage.setItem('selectedNetwork', newNetwork);
-            networkSelect.dataset.currentNetwork = newNetwork;
-            
-            // Update UI to show success
-            const successMsg = document.createElement('div');
-            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg z-50';
-            successMsg.textContent = `Successfully switched to ${newNetwork}`;
-            document.body.appendChild(successMsg);
-            setTimeout(() => successMsg.remove(), 3000);
-            
-        } catch (error) {
-            console.error('Network switch failed:', error);
-            
-            // Revert UI
-            networkSelect.value = oldNetwork;
-            
-            // Show error message
-            const errorMsg = document.createElement('div');
-            errorMsg.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg z-50';
-            errorMsg.textContent = `Failed to switch network: ${error.message}`;
-            document.body.appendChild(errorMsg);
-            setTimeout(() => errorMsg.remove(), 5000);
-            
-        } finally {
-            // Re-enable UI
-            networkSelect.disabled = false;
-            loadingIndicator.remove();
-        }
-    }
-
-    // Initialize connection on page load
-    window.addEventListener('load', async () => {
-        try {
-            const savedNetwork = localStorage.getItem('selectedNetwork') || 'devnet';
-            const networkSelect = document.getElementById('networkSelect');
-            networkSelect.value = savedNetwork;
-            networkSelect.dataset.currentNetwork = savedNetwork;
-            
-            await window.walletManager.initialize(savedNetwork);
-            
-            // Try to auto-connect to last used wallet
-            const lastWallet = localStorage.getItem('lastUsedWallet');
-            if (lastWallet) {
-                try {
-                    await window.walletManager.connectWallet(lastWallet);
-                } catch (error) {
-                    console.error('Auto-connect failed:', error);
-                }
-            }
-        } catch (error) {
-            console.error('Initialization failed:', error);
-        }
-    });
-
-    async function createToken() {
-        try {
-            const tokenName = document.getElementById('tokenName').value;
-            const tokenSymbol = document.getElementById('tokenSymbol').value;
-            const totalSupply = parseFloat(document.getElementById('totalSupply').value);
-            const decimals = document.getElementById('customDecimals').checked ? 9 : 6;
-            
-            if (!window.walletManager.isConnected()) {
-                throw new Error('Please connect your wallet first');
-            }
-
-            // Show loading state
-            const createButton = document.getElementById('createTokenButton');
-            const originalText = createButton.textContent;
-            createButton.disabled = true;
-            createButton.textContent = 'Creating Token...';
-
-            // Create token manager if not exists
-            if (!window.tokenManager) {
-                window.tokenManager = new TokenManager(window.walletManager);
-            }
-
-            // Create token
-            const result = await window.tokenManager.createToken(
-                tokenName,
-                tokenSymbol,
-                decimals,
-                totalSupply
-            );
-
-            // Show success message
-            const successMsg = document.createElement('div');
-            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg z-50';
-            successMsg.textContent = `Token created successfully! Mint address: ${result.mint}`;
-            document.body.appendChild(successMsg);
-            setTimeout(() => successMsg.remove(), 5000);
-
-            // Reset form
-            document.getElementById('createTokenForm').reset();
-
-        } catch (error) {
-            console.error('Token creation failed:', error);
-            
-            // Show error message
-            const errorMsg = document.createElement('div');
-            errorMsg.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg z-50';
-            errorMsg.textContent = `Failed to create token: ${error.message}`;
-            document.body.appendChild(errorMsg);
-            setTimeout(() => errorMsg.remove(), 5000);
-            
-        } finally {
-            // Reset button state
-            const createButton = document.getElementById('createTokenButton');
-            createButton.disabled = false;
-            createButton.textContent = 'Create Token';
-        }
-    }
-
-    function updateFeePreview() {
-        const revokeMint = document.getElementById('revokeMint').checked;
-        const freezeAuthority = document.getElementById('freezeAuthority').checked;
-        const customDecimals = document.getElementById('customDecimals').checked;
-        const metadata = document.getElementById('metadata').checked;
-
-        // Update fee line items visibility
-        document.getElementById('revokeMintFee').className = 
-            `flex justify-between mb-1 ${revokeMint ? 'text-gray-900' : 'text-gray-400'}`;
-        document.getElementById('freezeFee').className = 
-            `flex justify-between mb-1 ${freezeAuthority ? 'text-gray-900' : 'text-gray-400'}`;
-        document.getElementById('decimalsFee').className = 
-            `flex justify-between mb-1 ${customDecimals ? 'text-gray-900' : 'text-gray-400'}`;
-        document.getElementById('metadataFee').className = 
-            `flex justify-between mb-1 ${metadata ? 'text-gray-900' : 'text-gray-400'}`;
-
-        // Calculate total fee
-        let totalFee = 0.01;
-        if (revokeMint) totalFee += 0.005;
-        if (freezeAuthority) totalFee += 0.005;
-        if (customDecimals) totalFee += 0.005;
-        if (metadata) totalFee += 0.01;
-
-        document.getElementById('totalFee').textContent = `${totalFee.toFixed(3)} SOL`;
-    }
-
-    // Add event listeners for fee preview updates
-    document.addEventListener('DOMContentLoaded', () => {
-        updateFeePreview();
-    });
-</script>
-
-<div id="modal-container"></div>
+        // Make functions globally available
+        window.showNotification = showNotification;
+    </script>
 </body>
 </html>
