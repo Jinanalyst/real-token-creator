@@ -43,85 +43,132 @@
     </nav>
 
     <!-- Header Section -->
-    <header class="bg-blue-600 text-white py-12">
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-20">
         <div class="container mx-auto px-4 text-center">
-            <h1 class="text-4xl font-bold mb-4">Welcome to Solmint</h1>
-            <p class="text-xl">Your Gateway to Token Creation on Solana</p>
+            <h1 class="text-5xl font-bold mb-6">Welcome to Solmint</h1>
+            <p class="text-2xl mb-8">Your Gateway to Token Creation on Solana</p>
+            <p class="text-lg mb-12 max-w-2xl mx-auto">Create custom tokens and liquidity pools with ease. No coding required. Powered by the Solana blockchain.</p>
+            <div class="flex justify-center space-x-6">
+                <a href="create-token.html" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200">Create Token</a>
+                <a href="create-liquidity.html" class="bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors duration-200">Create Liquidity Pool</a>
+            </div>
         </div>
     </header>
 
-    <!-- Services Section -->
-    <main class="container mx-auto px-4 py-12">
-        <section class="text-center mb-12">
-            <h2 class="text-3xl font-semibold text-gray-800">Our Services</h2>
-            <p class="text-gray-600 mt-2">Explore how Solmint can help you create and manage your tokens with ease.</p>
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-16">
+        <!-- Features Section -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">Why Choose Solmint?</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-shadow">
+                    <div class="text-blue-600 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Lightning Fast</h3>
+                    <p class="text-gray-600">Create tokens in seconds on Solana's high-performance blockchain network.</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-shadow">
+                    <div class="text-blue-600 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Secure & Reliable</h3>
+                    <p class="text-gray-600">Built with industry-standard security practices and Solana's robust infrastructure.</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-8 hover:shadow-lg transition-shadow">
+                    <div class="text-blue-600 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">User-Friendly</h3>
+                    <p class="text-gray-600">Intuitive interface designed for both beginners and experienced users.</p>
+                </div>
+            </div>
         </section>
 
-        <!-- Services Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            <!-- Service 1 -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <h3 class="text-xl font-bold text-blue-600">Token Creation Made Simple</h3>
-                <p class="text-gray-700 mt-2">Create your custom token effortlessly. No coding knowledge required!</p>
-                <a href="create-token.html" class="mt-4 inline-block text-blue-600 hover:text-blue-800">Get Started →</a>
+        <!-- How It Works Section -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold text-center text-gray-800 mb-12">How It Works</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <span class="text-blue-600 text-xl font-bold">1</span>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">Connect Wallet</h3>
+                    <p class="text-gray-600">Link your Solana wallet to get started</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <span class="text-blue-600 text-xl font-bold">2</span>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">Choose Network</h3>
+                    <p class="text-gray-600">Select your preferred Solana network</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <span class="text-blue-600 text-xl font-bold">3</span>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">Configure Token</h3>
+                    <p class="text-gray-600">Set your token parameters</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                        <span class="text-blue-600 text-xl font-bold">4</span>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">Launch</h3>
+                    <p class="text-gray-600">Create your token with one click</p>
+                </div>
             </div>
+        </section>
 
-            <!-- Service 2 -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <h3 class="text-xl font-bold text-blue-600">Liquidity Pool Creation</h3>
-                <p class="text-gray-700 mt-2">Create and manage liquidity pools for your tokens with ease.</p>
-                <a href="create-liquidity.html" class="mt-4 inline-block text-blue-600 hover:text-blue-800">Learn More →</a>
+        <!-- CTA Section -->
+        <section class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl text-white py-12 px-8 text-center">
+            <h2 class="text-3xl font-bold mb-6">Ready to Create Your Token?</h2>
+            <p class="text-xl mb-8 max-w-2xl mx-auto">Join thousands of projects already building on Solana with Solmint</p>
+            <div class="flex justify-center space-x-6">
+                <a href="create-token.html" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors duration-200">Get Started Now</a>
+                <a href="https://github.com/Jinanalyst/real-token-creator" target="_blank" class="bg-transparent border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors duration-200">View on GitHub</a>
             </div>
-
-            <!-- Service 3 -->
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                <h3 class="text-xl font-bold text-blue-600">Multi-Wallet Support</h3>
-                <p class="text-gray-700 mt-2">Connect your favorite Solana wallet for seamless transactions.</p>
-            </div>
-        </div>
-
-        <!-- Features Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Feature 1 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-xl font-bold text-blue-600">Secure and Decentralized</h3>
-                <p class="text-gray-700 mt-2">Leverage Solana's blockchain for secure, fast, and scalable token solutions.</p>
-            </div>
-
-            <!-- Feature 2 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-xl font-bold text-blue-600">Expert Support</h3>
-                <p class="text-gray-700 mt-2">Get guidance from blockchain experts throughout your journey.</p>
-            </div>
-
-            <!-- Feature 3 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-xl font-bold text-blue-600">Community Building</h3>
-                <p class="text-gray-700 mt-2">Engage your community with airdrops, staking rewards, and more.</p>
-            </div>
-        </div>
+        </section>
     </main>
 
-    <!-- Call to Action -->
-    <section class="bg-blue-600 text-white py-12">
-        <div class="container mx-auto px-4 text-center">
-            <h2 class="text-3xl font-bold mb-4">Get Started Today</h2>
-            <p class="text-xl mb-8">Ready to launch your token project? Start creating on Solmint now!</p>
-            <div class="space-x-4">
-                <a href="create-token.html" class="inline-block bg-white text-blue-600 font-bold py-3 px-8 rounded-full shadow-md hover:bg-gray-100">
-                    Create Token
-                </a>
-                <a href="create-liquidity.html" class="inline-block bg-transparent text-white font-bold py-3 px-8 rounded-full border-2 border-white hover:bg-white hover:text-blue-600">
-                    Create Liquidity Pool
-                </a>
-            </div>
-        </div>
-    </section>
-
     <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-6">
-        <div class="container mx-auto px-4 text-center">
-            <p class="text-sm">&copy; 2024 Solmint. All rights reserved.</p>
+    <footer class="bg-gray-50 border-t border-gray-200 py-12 mt-20">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Solmint</h3>
+                    <p class="text-gray-600">Your trusted platform for token creation on Solana</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="create-token.html" class="text-gray-600 hover:text-blue-600">Create Token</a></li>
+                        <li><a href="create-liquidity.html" class="text-gray-600 hover:text-blue-600">Create Liquidity Pool</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Resources</h3>
+                    <ul class="space-y-2">
+                        <li><a href="https://github.com/Jinanalyst/real-token-creator" class="text-gray-600 hover:text-blue-600">Documentation</a></li>
+                        <li><a href="https://github.com/Jinanalyst/real-token-creator/issues" class="text-gray-600 hover:text-blue-600">Support</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Connect</h3>
+                    <ul class="space-y-2">
+                        <li><a href="https://github.com/Jinanalyst/real-token-creator" class="text-gray-600 hover:text-blue-600">GitHub</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="text-center text-gray-600 mt-12">
+                <p>&copy; 2024 Solmint. All rights reserved.</p>
+            </div>
         </div>
     </footer>
 
