@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolMint - Token Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="../css/styles.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-sans min-h-screen flex flex-col">
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-white"></div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50"></div>
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-6">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold">SolMint</h1>
+            <nav class="flex items-center space-x-4">
+                <a href="index.html" class="nav-link active">Create Token</a>
+                <a href="create-liquidity.html" class="nav-link">Create Liquidity Pool</a>
+                <button id="connectWalletButton" class="wallet-button">
+                    Connect Wallet
+                </button>
+                <select id="networkSelect" class="network-select">
+                    <option value="devnet">Devnet</option>
+                    <option value="testnet">Testnet</option>
+                    <option value="mainnet">Mainnet</option>
+                </select>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-8 flex-grow">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Token Creation Form -->
+            <section class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-6">Create Your Token</h2>
+                <div id="error-container" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"></div>
+                
+                <form id="createTokenForm" class="space-y-4">
+                    <div class="form-group">
+                        <label for="tokenName">Token Name</label>
+                        <input type="text" id="tokenName" required
+                               class="form-input" placeholder="e.g., My Token">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tokenSymbol">Token Symbol</label>
+                        <input type="text" id="tokenSymbol" required
+                               class="form-input" placeholder="e.g., MTK">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="totalSupply">Total Supply</label>
+                        <input type="number" id="totalSupply" required
+                               class="form-input" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="decimals">Decimals</label>
+                        <input type="number" id="decimals" value="9"
+                               class="form-input" min="0" max="9">
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="revokeMint">
+                            <label for="revokeMint">Revoke Mint Authority</label>
+                        </div>
+
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="freezeAuthority">
+                            <label for="freezeAuthority">Enable Freeze Authority</label>
+                        </div>
+                    </div>
+
+                    <div class="fee-preview mt-6 p-4 bg-gray-50 rounded">
+                        <h3 class="font-semibold mb-2">Fee Preview</h3>
+                        <div id="feeBreakdown" class="text-sm space-y-1">
+                            <div>Base Fee: <span id="baseFee">0.01 SOL</span></div>
+                            <div>Additional Fees: <span id="additionalFees">0 SOL</span></div>
+                            <div class="font-bold">Total: <span id="totalFee">0.01 SOL</span></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-button">
+                        Create Token
+                    </button>
+                </form>
+            </section>
+
+            <!-- Information Section -->
+            <section class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-6">Your Tokens</h2>
+                <div id="tokenList" class="space-y-4">
+                    <!-- Token list will be populated dynamically -->
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-xl font-semibold mb-4">What is a Token?</h3>
+                    <p class="text-gray-700">
+                        A token is a digital asset that represents value, ownership, or access rights on the Solana blockchain. 
+                        With SolMint, you can create custom tokens for various purposes:
+                    </p>
+                    <ul class="list-disc list-inside mt-4 space-y-2 text-gray-700">
+                        <li>Cryptocurrency tokens</li>
+                        <li>Governance tokens</li>
+                        <li>Utility tokens</li>
+                        <li>Gaming assets</li>
+                        <li>Reward points</li>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-blue-600 text-white p-6 mt-auto">
+        <div class="container mx-auto text-center">
+            <p>&copy; 2024 SolMint. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="../dist/main.bundle.js"></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+/* Base Styles */
+:root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --error-color: #ef4444;
+    --success-color: #22c55e;
+    --warning-color: #f59e0b;
+}
+
+/* Form Elements */
+.form-group {
+    @apply mb-4;
+}
+
+.form-input {
+    @apply w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition duration-200;
+}
+
+.form-checkbox {
+    @apply flex items-center space-x-2;
+}
+
+.form-checkbox input[type="checkbox"] {
+    @apply w-4 h-4 text-blue-600 rounded focus:ring-blue-500;
+}
+
+/* Buttons */
+.submit-button {
+    @apply w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 
+           focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 
+           transition duration-200 font-semibold;
+}
+
+.wallet-button {
+    @apply bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-700 
+           focus:outline-none focus:ring-2 focus:ring-blue-400
+           transition duration-200;
+}
+
+.wallet-button.connected {
+    @apply bg-green-500 hover:bg-green-600;
+}
+
+/* Navigation */
+.nav-link {
+    @apply text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300;
+}
+
+.nav-link.active {
+    @apply bg-blue-700;
+}
+
+.network-select {
+    @apply bg-white text-blue-600 border rounded-md py-2 px-4 
+           hover:border-blue-700 focus:outline-none focus:ring-2 
+           focus:ring-blue-600 transition duration-300;
+}
+
+/* Notifications */
+.notification {
+    @apply p-4 rounded-lg mb-2 text-white;
+    animation: slideIn 0.3s ease-out;
+}
+
+.notification.error {
+    @apply bg-red-500;
+}
+
+.notification.success {
+    @apply bg-green-500;
+}
+
+.notification.warning {
+    @apply bg-yellow-500;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+}
+
+.spinner {
+    @apply animate-spin rounded-full h-32 w-32 border-b-2 border-white;
+}
+
+/* Token List */
+.token-card {
+    @apply bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-blue-400 
+           transition duration-200;
+}
+
+.token-card-header {
+    @apply flex justify-between items-center mb-2;
+}
+
+.token-card-title {
+    @apply font-semibold text-lg;
+}
+
+.token-card-symbol {
+    @apply text-gray-600;
+}
+
+.token-card-details {
+    @apply text-sm text-gray-600 space-y-1;
+}
+
+/* Fee Preview */
+.fee-preview {
+    @apply bg-gray-50 p-4 rounded-lg border border-gray-200;
+}
+
+.fee-breakdown {
+    @apply text-sm space-y-1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        @apply px-4;
+    }
+
+    nav {
+        @apply flex-col space-y-2;
+    }
+
+    .nav-link {
+        @apply block text-center;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

@@ -178,10 +178,10 @@
     <script>
         // Initialize Solana connection and state
         let connection;
-        let walletPublicKey = null;
-        let selectedNetwork = localStorage.getItem('selectedNetwork') || 'devnet';
-        let currentWallet = null;
         let isConnecting = false;
+        let currentWallet = null;
+        let walletPublicKey = null;
+        let selectedNetwork = 'devnet';
 
         // Initialize connection on page load
         window.addEventListener('load', async () => {
@@ -257,29 +257,38 @@
             try {
                 let wallet;
                 if (walletName === 'phantom') {
-                    if (!window.solana || !window.solana.isPhantom) {
+                    if (!window.phantom?.solana?.isPhantom && !window.solana?.isPhantom) {
                         if (!isAutoConnect) {
                             alert("Phantom wallet is not installed. You will be redirected to install it.");
                             window.open("https://phantom.app/", "_blank");
                         }
                         return;
                     }
-                    wallet = window.solana;
+                    wallet = window.phantom?.solana || window.solana;
                 } else if (walletName === 'solflare') {
-                    if (!window.solflare) {
+                    if (!window.solflare?.isSolflare && !window.solana?.isSolflare) {
                         if (!isAutoConnect) {
                             alert("Solflare wallet is not installed. You will be redirected to install it.");
                             window.open("https://solflare.com/", "_blank");
                         }
                         return;
                     }
-                    wallet = window.solflare;
+                    wallet = window.solflare?.isSolflare ? window.solflare : window.solana;
+                }
+
+                if (!wallet) {
+                    throw new Error(`${walletName} wallet not found`);
                 }
 
                 // Check if wallet is already connected
-                if (currentWallet === wallet && walletPublicKey) {
-                    closeWalletModal();
-                    return;
+                try {
+                    const connected = await wallet.isConnected();
+                    if (connected && currentWallet === wallet && walletPublicKey) {
+                        closeWalletModal();
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error checking wallet connection:', error);
                 }
 
                 // Disconnect any existing wallet connection
@@ -287,39 +296,69 @@
                     await disconnectWallet();
                 }
 
-                currentWallet = wallet;
-                const resp = await wallet.connect();
-                walletPublicKey = resp.publicKey.toString();
-                
-                // Update button text and state
-                const connectButton = document.getElementById('connectWalletButton');
-                connectButton.textContent = `${walletName.charAt(0).toUpperCase() + walletName.slice(1)} (${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)})`;
-                connectButton.onclick = disconnectWallet;
-
-                // Save wallet preference
-                localStorage.setItem('lastUsedWallet', walletName);
-                localStorage.setItem('walletPublicKey', walletPublicKey);
-
-                // Ensure wallet is on the correct network
-                await switchWalletNetwork(selectedNetwork);
-                closeWalletModal();
-
-                // Add wallet change listener
-                wallet.on('accountChanged', async (newPublicKey) => {
-                    if (newPublicKey) {
-                        walletPublicKey = newPublicKey.toString();
-                        localStorage.setItem('walletPublicKey', walletPublicKey);
-                        const connectButton = document.getElementById('connectWalletButton');
-                        connectButton.textContent = `${walletName.charAt(0).toUpperCase() + walletName.slice(1)} (${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)})`;
-                    } else {
-                        await disconnectWallet();
+                try {
+                    currentWallet = wallet;
+                    
+                    // Try to get existing public key first
+                    let publicKey = wallet.publicKey;
+                    
+                    // If no existing public key, try to connect
+                    if (!publicKey) {
+                        const resp = await wallet.connect();
+                        publicKey = resp?.publicKey || wallet.publicKey;
                     }
-                });
+                    
+                    if (!publicKey) {
+                        throw new Error('No public key available after connection');
+                    }
+                    
+                    walletPublicKey = publicKey.toString();
+                    
+                    // Update button text and state
+                    const connectButton = document.getElementById('connectWalletButton');
+                    connectButton.textContent = `${walletName.charAt(0).toUpperCase() + walletName.slice(1)} (${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)})`;
+                    connectButton.onclick = disconnectWallet;
 
-                // Add disconnect listener
-                wallet.on('disconnect', async () => {
-                    await disconnectWallet();
-                });
+                    // Save wallet preference
+                    localStorage.setItem('lastUsedWallet', walletName);
+                    localStorage.setItem('walletPublicKey', walletPublicKey);
+
+                    // Ensure wallet is on the correct network
+                    await switchWalletNetwork(selectedNetwork);
+                    closeWalletModal();
+
+                    // Remove existing listeners if any
+                    if (typeof wallet.removeAllListeners === 'function') {
+                        wallet.removeAllListeners('accountChanged');
+                        wallet.removeAllListeners('disconnect');
+                    }
+
+                    // Add wallet change listener
+                    wallet.on('accountChanged', async (newPublicKey) => {
+                        try {
+                            if (newPublicKey) {
+                                walletPublicKey = newPublicKey.toString();
+                                localStorage.setItem('walletPublicKey', walletPublicKey);
+                                const connectButton = document.getElementById('connectWalletButton');
+                                connectButton.textContent = `${walletName.charAt(0).toUpperCase() + walletName.slice(1)} (${walletPublicKey.slice(0, 4)}...${walletPublicKey.slice(-4)})`;
+                            } else {
+                                await disconnectWallet();
+                            }
+                        } catch (error) {
+                            console.error('Error in accountChanged handler:', error);
+                            await disconnectWallet();
+                        }
+                    });
+
+                    // Add disconnect listener
+                    wallet.on('disconnect', async () => {
+                        await disconnectWallet();
+                    });
+
+                } catch (error) {
+                    console.error('Error in wallet connection process:', error);
+                    throw error;
+                }
 
             } catch (err) {
                 console.error("Error connecting to wallet:", err);
@@ -328,7 +367,7 @@
                         alert("Wallet connection was rejected by the user.");
                     }
                 } else {
-                    alert("Failed to connect to wallet: " + err.message);
+                    alert("Failed to connect to wallet: " + (err.message || 'Unknown error'));
                 }
                 await disconnectWallet();
             } finally {
@@ -339,16 +378,21 @@
         async function disconnectWallet() {
             try {
                 if (currentWallet) {
-                    await currentWallet.disconnect();
+                    try {
+                        await currentWallet.disconnect();
+                    } catch (error) {
+                        console.error('Error disconnecting wallet:', error);
+                    }
                 }
-            } catch (err) {
-                console.error("Error disconnecting wallet:", err);
+            } catch (error) {
+                console.error('Error in disconnectWallet:', error);
             } finally {
-                // Clear all wallet-related data
+                // Clean up regardless of errors
+                currentWallet = null;
+                walletPublicKey = null;
                 localStorage.removeItem('lastUsedWallet');
                 localStorage.removeItem('walletPublicKey');
-                walletPublicKey = null;
-                currentWallet = null;
+                
                 const connectButton = document.getElementById('connectWalletButton');
                 connectButton.textContent = 'Connect Wallet';
                 connectButton.onclick = showWalletModal;
@@ -626,185 +670,124 @@
         }
 
         async function createRaydiumPoolTransaction(connection, poolConfig, userPublicKey, baseTokenAccount, quoteTokenAccount) {
-            const { baseToken, quoteToken, liquidityAmount, feeTier, customRatio, customPriceRange, advancedSettings, priceRange, tokenRatio } = poolConfig;
-            
-            // Get token mint addresses
-            const baseTokenMint = await getTokenMintAddress(baseToken);
-            const quoteTokenMint = await getTokenMintAddress(quoteToken);
-
-            // Initialize Raydium SDK
-            const RAYDIUM_PROGRAM_ID = getRaydiumProgramId(selectedNetwork);
-            
-            // Create the pool settings
-            const poolConfig = {
-                baseMint: baseTokenMint,
-                quoteMint: quoteTokenMint,
-                baseAmount: new BN(liquidityAmount * (10 ** 9)), // Assuming 9 decimals
-                quoteAmount: new BN(liquidityAmount * (10 ** 9)), // Equal amounts for initial liquidity
-                startPrice: 1, // 1:1 ratio for initial pool
-                feeTier: feeTier * 100 // Convert percentage to basis points
-            };
-
-            // Create transaction for pool creation
-            const transaction = await createRaydiumPoolTransaction(
-                connection,
-                poolConfig,
-                new solanaWeb3.PublicKey(walletPublicKey),
-                baseTokenAccount,
-                quoteTokenAccount
-            );
-
-            // Sign and send transaction
-            const signedTransaction = await currentWallet.signTransaction(transaction);
-            const txId = await connection.sendRawTransaction(signedTransaction.serialize());
-            
-            console.log('Waiting for transaction confirmation...');
-            const confirmation = await connection.confirmTransaction(txId, 'confirmed');
-            
-            if (confirmation.value.err) {
-                throw new Error('Transaction failed to confirm');
-            }
-
-            console.log('Liquidity pool created successfully on Raydium!');
-            console.log('Transaction ID:', txId);
-            
-            // Store pool info to localStorage
-            const poolInfo = {
-                baseToken,
-                quoteToken,
-                txId,
-                timestamp: Date.now()
-            };
-            const pools = JSON.parse(localStorage.getItem('createdPools') || '[]');
-            pools.push(poolInfo);
-            localStorage.setItem('createdPools', JSON.stringify(pools));
-
-            return txId;
-        }
-
-        function getRaydiumProgramId(network) {
-            const programIds = {
-                'mainnet': 'RVKd61ztZW9GUwhRbbLoYVRE5Xf1B2tVscKqwZqXgEr',
-                'devnet': '27haf8L6oxUeXrHrgEgsexjSY5hbVUWEmvv9Nyxg8vQv',
-                'testnet': '27haf8L6oxUeXrHrgEgsexjSY5hbVUWEmvv9Nyxg8vQv'
-            };
-            return new solanaWeb3.PublicKey(programIds[network]);
-        }
-
-        async function createRaydiumPoolTransaction(connection, poolConfig, userPublicKey, baseTokenAccount, quoteTokenAccount) {
-            const { baseMint, quoteMint, baseAmount, quoteAmount, startPrice, feeTier } = poolConfig;
-            
-            // Get Raydium pool program
-            const ammProgram = new raydium.Program(connection, getRaydiumProgramId(selectedNetwork));
-            
-            // Calculate pool token mint address (PDA)
-            const [poolTokenMint] = await solanaWeb3.PublicKey.findProgramAddress(
-                [
-                    Buffer.from('amm_pool'),
-                    baseMint.toBuffer(),
-                    quoteMint.toBuffer()
-                ],
-                ammProgram.programId
-            );
-
-            // Create pool token account
-            const poolTokenAccount = await createAssociatedTokenAccountIfNotExists(
-                poolTokenMint,
-                userPublicKey
-            );
-
-            // Create the AMM pool account
-            const [ammAccount] = await solanaWeb3.PublicKey.findProgramAddress(
-                [
-                    Buffer.from('amm_account'),
-                    poolTokenMint.toBuffer()
-                ],
-                ammProgram.programId
-            );
-
-            // Create transaction
-            const transaction = new solanaWeb3.Transaction();
-
-            // Add create pool instruction
-            const createPoolIx = await ammProgram.createPool({
-                poolTokenMint,
-                ammAccount,
-                baseMint,
-                quoteMint,
-                baseTokenAccount,
-                quoteTokenAccount,
-                poolTokenAccount,
-                userPublicKey,
-                baseAmount,
-                quoteAmount,
-                startPrice,
-                feeTier
-            });
-
-            transaction.add(createPoolIx);
-
-            // Get recent blockhash
-            const { blockhash } = await connection.getRecentBlockhash();
-            transaction.recentBlockhash = blockhash;
-            transaction.feePayer = userPublicKey;
-
-            return transaction;
-        }
-
-        async function getTokenMintAddress(tokenSymbol) {
-            // Common token addresses across networks
-            const tokenAddresses = {
-                'mainnet': {
-                    'SOL': 'So11111111111111111111111111111111111111112',
-                    'USDC': 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-                    'USDT': 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-                    'RAY': '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R'
-                },
-                'devnet': {
-                    'SOL': 'So11111111111111111111111111111111111111112',
-                    'USDC': 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr',
-                    'USDT': 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'
+            try {
+                const programId = getRaydiumProgramId(window.walletManager.network);
+                
+                // Initialize Raydium SDK
+                const raydium = window.RAYDIUM;
+                
+                // Get token mints
+                const baseMint = new solanaWeb3.PublicKey(await getTokenMintAddress(poolConfig.baseToken));
+                const quoteMint = new solanaWeb3.PublicKey(await getTokenMintAddress(poolConfig.quoteToken));
+                
+                // Create Associated Token Accounts if they don't exist
+                const baseATA = await createAssociatedTokenAccountIfNotExists(baseMint, userPublicKey);
+                const quoteATA = await createAssociatedTokenAccountIfNotExists(quoteMint, userPublicKey);
+                
+                // Calculate amounts based on ratio
+                let baseAmount = poolConfig.liquidityAmount;
+                let quoteAmount = poolConfig.liquidityAmount;
+                
+                if (poolConfig.customRatio && poolConfig.tokenRatio) {
+                    baseAmount = poolConfig.liquidityAmount * poolConfig.tokenRatio.baseRatio;
+                    quoteAmount = poolConfig.liquidityAmount * poolConfig.tokenRatio.quoteRatio;
                 }
-            };
-
-            // For custom tokens, get from localStorage
-            const customTokens = JSON.parse(localStorage.getItem('createdTokens') || '{}');
-            const networkTokens = { ...tokenAddresses[selectedNetwork], ...customTokens };
-
-            if (!networkTokens[tokenSymbol]) {
-                throw new Error(`Token ${tokenSymbol} not found on ${selectedNetwork}`);
+                
+                // Create pool parameters
+                const poolParams = {
+                    baseMint,
+                    quoteMint,
+                    baseAmount: new raydium.BN(baseAmount * Math.pow(10, await getTokenDecimals(baseMint))),
+                    quoteAmount: new raydium.BN(quoteAmount * Math.pow(10, await getTokenDecimals(quoteMint))),
+                    baseDecimals: await getTokenDecimals(baseMint),
+                    quoteDecimals: await getTokenDecimals(quoteMint),
+                    feeTier: poolConfig.feeTier,
+                    tickSpacing: getTickSpacing(poolConfig.feeTier),
+                    programId,
+                    baseTokenAccount: baseATA,
+                    quoteTokenAccount: quoteATA
+                };
+                
+                // Add price range if specified
+                if (poolConfig.customPriceRange && poolConfig.priceRange) {
+                    poolParams.priceRange = {
+                        min: poolConfig.priceRange.min,
+                        max: poolConfig.priceRange.max
+                    };
+                }
+                
+                // Create pool instructions
+                const instructions = await raydium.createPoolInstructions({
+                    connection,
+                    poolParams,
+                    userPublicKey
+                });
+                
+                // Combine all instructions into a single transaction
+                const transaction = new solanaWeb3.Transaction();
+                instructions.forEach(instruction => transaction.add(instruction));
+                
+                return transaction;
+            } catch (error) {
+                console.error('Failed to create pool transaction:', error);
+                throw new Error(`Failed to create pool transaction: ${error.message}`);
             }
+        }
 
-            return new solanaWeb3.PublicKey(networkTokens[tokenSymbol]);
+        async function getTokenDecimals(mint) {
+            try {
+                const mintInfo = await window.walletManager.connection.getParsedAccountInfo(mint);
+                return mintInfo.value.data.parsed.info.decimals;
+            } catch (error) {
+                console.error('Failed to get token decimals:', error);
+                throw error;
+            }
+        }
+
+        function getTickSpacing(feeTier) {
+            // Raydium tick spacing based on fee tier
+            const tickSpacingMap = {
+                0.01: 1,    // 0.01%
+                0.05: 2,    // 0.05%
+                0.3: 8,     // 0.3%
+                1: 16,      // 1%
+                2: 32       // 2%
+            };
+            return tickSpacingMap[feeTier] || 8; // Default to 0.3% spacing
         }
 
         async function createAssociatedTokenAccountIfNotExists(mint, owner) {
-            const associatedTokenAddress = await splToken.Token.getAssociatedTokenAddress(
-                splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-                splToken.TOKEN_PROGRAM_ID,
-                mint,
-                owner
-            );
-
             try {
-                await splToken.Token.getAccountInfo(connection, associatedTokenAddress);
-                return associatedTokenAddress;
-            } catch (error) {
-                // Account doesn't exist, create it
-                const transaction = new solanaWeb3.Transaction().add(
-                    splToken.Token.createAssociatedTokenAccountInstruction(
-                        splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-                        splToken.TOKEN_PROGRAM_ID,
-                        mint,
-                        associatedTokenAddress,
-                        owner,
-                        new solanaWeb3.PublicKey(walletPublicKey)
-                    )
+                const ata = await solanaWeb3.Token.getAssociatedTokenAddress(
+                    solanaWeb3.ASSOCIATED_TOKEN_PROGRAM_ID,
+                    solanaWeb3.TOKEN_PROGRAM_ID,
+                    mint,
+                    owner,
+                    true
                 );
-
-                const signedTransaction = await currentWallet.signTransaction(transaction);
-                await connection.sendRawTransaction(signedTransaction.serialize());
-                return associatedTokenAddress;
+                
+                try {
+                    await window.walletManager.connection.getTokenAccountBalance(ata);
+                    return ata;
+                } catch (error) {
+                    // Account doesn't exist, create it
+                    const transaction = new solanaWeb3.Transaction().add(
+                        solanaWeb3.Token.createAssociatedTokenAccountInstruction(
+                            solanaWeb3.ASSOCIATED_TOKEN_PROGRAM_ID,
+                            solanaWeb3.TOKEN_PROGRAM_ID,
+                            mint,
+                            ata,
+                            owner,
+                            owner
+                        )
+                    );
+                    
+                    await window.walletManager.signAndSendTransaction(transaction);
+                    return ata;
+                }
+            } catch (error) {
+                console.error('Failed to create associated token account:', error);
+                throw error;
             }
         }
 
